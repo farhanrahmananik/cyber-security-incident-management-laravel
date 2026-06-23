@@ -45,6 +45,15 @@
                 <span>Incident Categories</span>
             </a>
         @endcan
+
+        @can('severity-level.view')
+            <a
+                class="sidebar-link {{ request()->routeIs('severity-levels.*') ? 'active' : '' }}"
+                href="{{ route('severity-levels.index') }}"
+            >
+                <span>Severity Levels</span>
+            </a>
+        @endcan
     @endcanany
 
     @can('investigation-note.view')

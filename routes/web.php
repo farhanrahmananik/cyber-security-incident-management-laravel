@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
+use App\Http\Controllers\IncidentSetup\SeverityLevelController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,6 +39,27 @@ Route::middleware('auth')->group(function () {
 
             Route::delete('/{incidentCategory}', 'destroy')
                 ->middleware('permission:incident-category.manage')
+                ->name('destroy');
+        });
+
+    Route::prefix('incident-setup/severity-levels')
+        ->name('severity-levels.')
+        ->controller(SeverityLevelController::class)
+        ->group(function () {
+            Route::get('/', 'index')
+                ->middleware('permission:severity-level.view')
+                ->name('index');
+
+            Route::post('/', 'store')
+                ->middleware('permission:severity-level.manage')
+                ->name('store');
+
+            Route::match(['put', 'patch'], '/{severityLevel}', 'update')
+                ->middleware('permission:severity-level.manage')
+                ->name('update');
+
+            Route::delete('/{severityLevel}', 'destroy')
+                ->middleware('permission:severity-level.manage')
                 ->name('destroy');
         });
 
