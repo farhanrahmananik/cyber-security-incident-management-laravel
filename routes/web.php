@@ -6,6 +6,7 @@ use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
+use App\Http\Controllers\Ioc\IncidentIocController;
 use App\Http\Controllers\Investigation\InvestigationNoteController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,6 +57,18 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{incident}/investigation-notes/{investigationNote}', [InvestigationNoteController::class, 'destroy'])
                 ->middleware('permission:investigation-note.delete')
                 ->name('investigation-notes.destroy');
+
+            Route::post('/{incident}/iocs', [IncidentIocController::class, 'store'])
+                ->middleware('permission:ioc.manage')
+                ->name('iocs.store');
+
+            Route::patch('/{incident}/iocs/{incidentIoc}', [IncidentIocController::class, 'update'])
+                ->middleware('permission:ioc.manage')
+                ->name('iocs.update');
+
+            Route::delete('/{incident}/iocs/{incidentIoc}', [IncidentIocController::class, 'destroy'])
+                ->middleware('permission:ioc.manage')
+                ->name('iocs.destroy');
 
             Route::get('/{incident}', 'show')
                 ->middleware('permission:incident.view')
