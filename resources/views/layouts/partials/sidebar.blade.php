@@ -35,10 +35,16 @@
     @endcan
 
     @canany(['incident-category.view', 'severity-level.view', 'priority-level.view'])
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>Incident Setup</span>
-            <span class="planned-label">Planned</span>
-        </a>
+        <div class="sidebar-section-label">Incident Setup</div>
+
+        @can('incident-category.view')
+            <a
+                class="sidebar-link {{ request()->routeIs('incident-categories.*') ? 'active' : '' }}"
+                href="{{ route('incident-categories.index') }}"
+            >
+                <span>Incident Categories</span>
+            </a>
+        @endcan
     @endcanany
 
     @can('investigation-note.view')
