@@ -72,6 +72,14 @@ class Incident extends Model
     }
 
     /**
+     * Investigation notes recorded for this incident.
+     */
+    public function investigationNotes(): HasMany
+    {
+        return $this->hasMany(InvestigationNote::class);
+    }
+
+    /**
      * Category assigned to the incident.
      */
     public function category(): BelongsTo
