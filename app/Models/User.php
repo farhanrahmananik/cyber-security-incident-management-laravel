@@ -100,6 +100,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Indicators of compromise recorded by this user.
+     */
+    public function createdIocs(): HasMany
+    {
+        return $this->hasMany(IncidentIoc::class, 'created_by_id');
+    }
+
+    /**
      * Determine if the user has an active role.
      */
     public function hasRole(string $roleSlug): bool
