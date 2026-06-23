@@ -12,6 +12,26 @@
 @endsection
 
 @section('content')
+    @php
+        $iocTypeLabels = [
+            'ip_address' => 'IP Address',
+            'domain' => 'Domain',
+            'url' => 'URL',
+            'file_hash' => 'File Hash',
+            'email_address' => 'Email Address',
+            'malware_filename' => 'Malware Filename',
+            'process_name' => 'Process Name',
+            'registry_key' => 'Registry Key',
+            'other' => 'Other',
+        ];
+
+        $iocConfidenceLabels = [
+            'low' => 'Low',
+            'medium' => 'Medium',
+            'high' => 'High',
+        ];
+    @endphp
+
     <div class="row g-4">
         <div class="col-12">
             <div class="bg-white border rounded-2 p-4">
@@ -281,6 +301,330 @@
 
                                     <button type="submit" class="btn btn-primary">
                                         Add Note
+                                    </button>
+                                </form>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+        @endcan
+
+        @can('ioc.view')
+            <div class="col-12">
+                <div class="bg-white border rounded-2 p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                        <div class="flex-fill">
+                            <h2 class="h5 mb-1">Indicators of Compromise</h2>
+                            <p class="text-secondary mb-4">
+                                Incident-linked observables for threat analysis, enrichment, and response tracking.
+                            </p>
+
+                            @forelse ($iocs as $incidentIoc)
+                                <div class="border rounded-2 p-3 mb-3">
+                                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-3">
+                                        <div class="flex-fill">
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                                <span class="badge text-bg-secondary">
+                                                    {{ $iocTypeLabels[$incidentIoc->type] ?? str($incidentIoc->type)->replace('_', ' ')->title() }}
+                                                </span>
+
+                                                @if ($incidentIoc->confidence)
+                                                    <span class="badge text-bg-info">
+                                                        {{ $iocConfidenceLabels[$incidentIoc->confidence] ?? str($incidentIoc->confidence)->title() }} Confidence
+                                                    </span>
+                                                @else
+                                                    <span class="badge text-bg-light">Confidence Not Set</span>
+                                                @endif
+                                            </div>
+
+                                            <code class="d-block text-break mb-2">{{ $incidentIoc->value }}</code>
+
+                                            <div class="row g-2 text-secondary small">
+                                                <div class="col-md-6">
+                                                    First seen:
+                                                    <span class="text-body">
+                                                        {{ $incidentIoc->first_seen_at?->format('Y-m-d H:i') ?? 'Not provided' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Last seen:
+                                                    <span class="text-body">
+                                                        {{ $incidentIoc->last_seen_at?->format('Y-m-d H:i') ?? 'Not provided' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Recorded by:
+                                                    <span class="text-body">
+                                                        {{ $incidentIoc->createdBy?->name ?? 'Unknown user' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Recorded at:
+                                                    <span class="text-body">
+                                                        {{ $incidentIoc->created_at?->format('Y-m-d H:i') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            @if ($incidentIoc->description)
+                                                <p class="mb-0 mt-3" style="white-space: pre-line;">{{ $incidentIoc->description }}</p>
+                                            @endif
+                                        </div>
+
+                                        @can('ioc.manage')
+                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                                <details>
+                                                    <summary class="btn btn-outline-primary btn-sm">
+                                                        Edit
+                                                    </summary>
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('incidents.iocs.update', [$incident, $incidentIoc]) }}"
+                                                        class="mt-3 border rounded-2 p-3"
+                                                        style="min-width: min(100%, 420px);"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+
+                                                        <div class="mb-3">
+                                                            <label for="ioc_type_{{ $incidentIoc->id }}" class="form-label">Type</label>
+                                                            <select
+                                                                id="ioc_type_{{ $incidentIoc->id }}"
+                                                                name="type"
+                                                                class="form-select @error('type') is-invalid @enderror"
+                                                                required
+                                                            >
+                                                                @foreach ($iocTypeLabels as $iocTypeValue => $iocTypeLabel)
+                                                                    <option
+                                                                        value="{{ $iocTypeValue }}"
+                                                                        @selected(old('type', $incidentIoc->type) === $iocTypeValue)
+                                                                    >
+                                                                        {{ $iocTypeLabel }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('type')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="ioc_value_{{ $incidentIoc->id }}" class="form-label">Value</label>
+                                                            <textarea
+                                                                id="ioc_value_{{ $incidentIoc->id }}"
+                                                                name="value"
+                                                                class="form-control @error('value') is-invalid @enderror"
+                                                                rows="3"
+                                                                maxlength="2048"
+                                                                required
+                                                            >{{ old('value', $incidentIoc->value) }}</textarea>
+                                                            @error('value')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="ioc_confidence_{{ $incidentIoc->id }}" class="form-label">Confidence</label>
+                                                            <select
+                                                                id="ioc_confidence_{{ $incidentIoc->id }}"
+                                                                name="confidence"
+                                                                class="form-select @error('confidence') is-invalid @enderror"
+                                                            >
+                                                                <option value="">Select confidence</option>
+                                                                @foreach ($iocConfidenceLabels as $confidenceValue => $confidenceLabel)
+                                                                    <option
+                                                                        value="{{ $confidenceValue }}"
+                                                                        @selected(old('confidence', $incidentIoc->confidence) === $confidenceValue)
+                                                                    >
+                                                                        {{ $confidenceLabel }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('confidence')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="row g-3">
+                                                            <div class="col-md-6">
+                                                                <label for="ioc_first_seen_at_{{ $incidentIoc->id }}" class="form-label">First Seen</label>
+                                                                <input
+                                                                    id="ioc_first_seen_at_{{ $incidentIoc->id }}"
+                                                                    type="datetime-local"
+                                                                    name="first_seen_at"
+                                                                    class="form-control @error('first_seen_at') is-invalid @enderror"
+                                                                    value="{{ old('first_seen_at', $incidentIoc->first_seen_at?->format('Y-m-d\TH:i')) }}"
+                                                                >
+                                                                @error('first_seen_at')
+                                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                                @enderror
+                                                            </div>
+
+                                                            <div class="col-md-6">
+                                                                <label for="ioc_last_seen_at_{{ $incidentIoc->id }}" class="form-label">Last Seen</label>
+                                                                <input
+                                                                    id="ioc_last_seen_at_{{ $incidentIoc->id }}"
+                                                                    type="datetime-local"
+                                                                    name="last_seen_at"
+                                                                    class="form-control @error('last_seen_at') is-invalid @enderror"
+                                                                    value="{{ old('last_seen_at', $incidentIoc->last_seen_at?->format('Y-m-d\TH:i')) }}"
+                                                                >
+                                                                @error('last_seen_at')
+                                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                                @enderror
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="mt-3">
+                                                            <label for="ioc_description_{{ $incidentIoc->id }}" class="form-label">Description</label>
+                                                            <textarea
+                                                                id="ioc_description_{{ $incidentIoc->id }}"
+                                                                name="description"
+                                                                class="form-control @error('description') is-invalid @enderror"
+                                                                rows="3"
+                                                                maxlength="5000"
+                                                            >{{ old('description', $incidentIoc->description) }}</textarea>
+                                                            @error('description')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                                            Save IOC
+                                                        </button>
+                                                    </form>
+                                                </details>
+
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('incidents.iocs.destroy', [$incident, $incidentIoc]) }}"
+                                                    onsubmit="return confirm('Delete this IOC?');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endcan
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="border rounded-2 p-3 text-secondary">
+                                    No indicators of compromise recorded yet.
+                                </div>
+                            @endforelse
+                        </div>
+
+                        @can('ioc.manage')
+                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                                <h3 class="h6 mb-3">Add IOC</h3>
+
+                                <form method="POST" action="{{ route('incidents.iocs.store', $incident) }}">
+                                    @csrf
+
+                                    <div class="mb-3">
+                                        <label for="ioc_type" class="form-label">Type</label>
+                                        <select
+                                            id="ioc_type"
+                                            name="type"
+                                            class="form-select @error('type') is-invalid @enderror"
+                                            required
+                                        >
+                                            <option value="">Select type</option>
+                                            @foreach ($iocTypeLabels as $iocTypeValue => $iocTypeLabel)
+                                                <option value="{{ $iocTypeValue }}" @selected(old('type') === $iocTypeValue)>
+                                                    {{ $iocTypeLabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="ioc_value" class="form-label">Value</label>
+                                        <textarea
+                                            id="ioc_value"
+                                            name="value"
+                                            class="form-control @error('value') is-invalid @enderror"
+                                            rows="3"
+                                            maxlength="2048"
+                                            required
+                                        >{{ old('value') }}</textarea>
+                                        @error('value')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="ioc_confidence" class="form-label">Confidence</label>
+                                        <select
+                                            id="ioc_confidence"
+                                            name="confidence"
+                                            class="form-select @error('confidence') is-invalid @enderror"
+                                        >
+                                            <option value="">Select confidence</option>
+                                            @foreach ($iocConfidenceLabels as $confidenceValue => $confidenceLabel)
+                                                <option value="{{ $confidenceValue }}" @selected(old('confidence') === $confidenceValue)>
+                                                    {{ $confidenceLabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('confidence')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="ioc_first_seen_at" class="form-label">First Seen</label>
+                                            <input
+                                                id="ioc_first_seen_at"
+                                                type="datetime-local"
+                                                name="first_seen_at"
+                                                class="form-control @error('first_seen_at') is-invalid @enderror"
+                                                value="{{ old('first_seen_at') }}"
+                                            >
+                                            @error('first_seen_at')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="ioc_last_seen_at" class="form-label">Last Seen</label>
+                                            <input
+                                                id="ioc_last_seen_at"
+                                                type="datetime-local"
+                                                name="last_seen_at"
+                                                class="form-control @error('last_seen_at') is-invalid @enderror"
+                                                value="{{ old('last_seen_at') }}"
+                                            >
+                                            @error('last_seen_at')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 mb-3">
+                                        <label for="ioc_description" class="form-label">Description</label>
+                                        <textarea
+                                            id="ioc_description"
+                                            name="description"
+                                            class="form-control @error('description') is-invalid @enderror"
+                                            rows="3"
+                                            maxlength="5000"
+                                        >{{ old('description') }}</textarea>
+                                        @error('description')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        Add IOC
                                     </button>
                                 </form>
                             </div>
