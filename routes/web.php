@@ -6,6 +6,7 @@ use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
+use App\Http\Controllers\Investigation\InvestigationNoteController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -43,6 +44,18 @@ Route::middleware('auth')->group(function () {
             Route::post('/{incident}/assign', [IncidentAssignmentController::class, 'store'])
                 ->middleware('permission:incident.assign')
                 ->name('assign');
+
+            Route::post('/{incident}/investigation-notes', [InvestigationNoteController::class, 'store'])
+                ->middleware('permission:investigation-note.create')
+                ->name('investigation-notes.store');
+
+            Route::patch('/{incident}/investigation-notes/{investigationNote}', [InvestigationNoteController::class, 'update'])
+                ->middleware('permission:investigation-note.update')
+                ->name('investigation-notes.update');
+
+            Route::delete('/{incident}/investigation-notes/{investigationNote}', [InvestigationNoteController::class, 'destroy'])
+                ->middleware('permission:investigation-note.delete')
+                ->name('investigation-notes.destroy');
 
             Route::get('/{incident}', 'show')
                 ->middleware('permission:incident.view')

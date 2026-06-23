@@ -18,7 +18,7 @@ class RbacFoundationTest extends TestCase
         $this->seed();
 
         $this->assertSame(4, Role::query()->count());
-        $this->assertSame(33, Permission::query()->count());
+        $this->assertSame(35, Permission::query()->count());
 
         $this->assertDatabaseHas('roles', [
             'name' => 'Super Admin',
@@ -35,6 +35,12 @@ class RbacFoundationTest extends TestCase
         $this->assertDatabaseHas('permissions', [
             'slug' => 'incident.assign',
             'group_name' => 'incidents',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('permissions', [
+            'slug' => 'investigation-note.delete',
+            'group_name' => 'investigations',
             'is_active' => true,
         ]);
 

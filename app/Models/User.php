@@ -92,6 +92,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Investigation notes authored by this user.
+     */
+    public function authoredInvestigationNotes(): HasMany
+    {
+        return $this->hasMany(InvestigationNote::class, 'author_id');
+    }
+
+    /**
      * Determine if the user has an active role.
      */
     public function hasRole(string $roleSlug): bool

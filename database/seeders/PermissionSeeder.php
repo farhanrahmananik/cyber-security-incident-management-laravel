@@ -38,6 +38,8 @@ class PermissionSeeder extends Seeder
             ['Priority Level Manage', 'priority-level.manage', 'incident setup'],
             ['Investigation Note View', 'investigation-note.view', 'investigations'],
             ['Investigation Note Create', 'investigation-note.create', 'investigations'],
+            ['Investigation Note Update', 'investigation-note.update', 'investigations'],
+            ['Investigation Note Delete', 'investigation-note.delete', 'investigations'],
             ['IOC View', 'ioc.view', 'indicators of compromise'],
             ['IOC Manage', 'ioc.manage', 'indicators of compromise'],
             ['Evidence View', 'evidence.view', 'evidence'],

@@ -60,7 +60,9 @@ class IncidentController extends Controller
 
         abort_unless($incidentService->canView($user, $incident), 403);
 
-        $incident->load([
+        $canViewInvestigationNotes = $user->can('investigation-note.view');
+
+        $relations = [
             'reporter',
             'category',
             'severity',
@@ -69,13 +71,24 @@ class IncidentController extends Controller
             'assignments' => fn ($query) => $query
                 ->with(['assignedTo', 'assignedBy'])
                 ->latest('assigned_at'),
-        ]);
+        ];
+
+        if ($canViewInvestigationNotes) {
+            $relations['investigationNotes'] = fn ($query) => $query
+                ->with('author')
+                ->latest();
+        }
+
+        $incident->load($relations);
 
         return view('incidents.show', [
             'incident' => $incident,
             'assignmentHistory' => $incident->assignments,
             'assignableUsers' => $user->can('incident.assign')
                 ? $assignmentService->assignableUsers()
+                : collect(),
+            'investigationNotes' => $canViewInvestigationNotes
+                ? $incident->investigationNotes
                 : collect(),
         ]);
     }
