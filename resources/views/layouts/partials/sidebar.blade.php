@@ -64,20 +64,6 @@
         @endcan
     @endcanany
 
-    @can('investigation-note.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>Investigation Notes</span>
-            <span class="planned-label">Planned</span>
-        </a>
-    @endcan
-
-    @can('ioc.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>IOC Management</span>
-            <span class="planned-label">Planned</span>
-        </a>
-    @endcan
-
     @can('evidence.view')
         <a class="sidebar-link planned" href="#" aria-disabled="true">
             <span>Evidence</span>

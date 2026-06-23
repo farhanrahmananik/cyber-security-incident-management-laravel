@@ -69,6 +69,44 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $response->assertSee('Planned');
     }
 
+    public function test_sidebar_hides_embedded_modules_and_keeps_planned_badges_for_unimplemented_modules(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'audit-log.view',
+            'dashboard.view',
+            'evidence.view',
+            'ioc.view',
+            'investigation-note.view',
+            'report.view',
+            'role.view',
+            'response-action.view',
+            'user.view',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+        $content = $response->getContent();
+
+        $response->assertOk();
+        $response->assertDontSee('Investigation Notes');
+        $response->assertDontSee('IOC Management');
+
+        $plannedModules = [
+            'User Management',
+            'Role &amp; Permission',
+            'Evidence',
+            'Response Actions',
+            'Reports',
+            'Audit Logs',
+        ];
+
+        foreach ($plannedModules as $plannedModule) {
+            $this->assertMatchesRegularExpression(
+                sprintf('/<span>%s<\/span>\s*<span class="planned-label">Planned<\/span>/', preg_quote($plannedModule, '/')),
+                $content,
+            );
+        }
+    }
+
     public function test_topbar_shows_authenticated_user_name_email_and_roles(): void
     {
         $user = $this->createUserWithPermissions(['dashboard.view'], [
