@@ -80,6 +80,14 @@ class Incident extends Model
     }
 
     /**
+     * Indicators of compromise recorded for this incident.
+     */
+    public function iocs(): HasMany
+    {
+        return $this->hasMany(IncidentIoc::class);
+    }
+
+    /**
      * Category assigned to the incident.
      */
     public function category(): BelongsTo

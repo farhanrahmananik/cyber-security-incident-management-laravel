@@ -30,7 +30,7 @@ Recommended notes:
 - `email` should remain unique.
 - `password` should store only hashed values.
 - `is_active` should be used to deactivate users without deleting historical associations.
-- Users should be related to incidents, assignments, notes, response actions, reports, and audit logs.
+- Users should be related to incidents, assignments, notes, IOCs, response actions, reports, and audit logs.
 
 ### password_reset_tokens
 
@@ -356,30 +356,56 @@ Recommended columns:
 - `id`
 - `incident_id`
 - `type`
-- `value`
-- `description` nullable
-- `confidence` nullable
-- `first_seen_at` nullable
-- `last_seen_at` nullable
+- `value` string length 2048
+- `description` nullable text
+- `confidence` nullable string
+- `first_seen_at` nullable timestamp
+- `last_seen_at` nullable timestamp
 - `created_by_id`
 - `created_at`
 - `updated_at`
 
-IOC examples:
+Implemented IOC type values:
 
-- IP address
-- Domain
-- URL
-- File hash
-- Email address
-- Malware signature
+- `ip_address`
+- `domain`
+- `url`
+- `file_hash`
+- `email_address`
+- `malware_filename`
+- `process_name`
+- `registry_key`
+- `other`
 
 Recommended notes:
 
 - `incident_id` references `incidents`.
 - `created_by_id` references the user who recorded the IOC.
 - `type` should be constrained by application validation or a controlled list.
-- Consider indexing `type` and `value` for search and correlation.
+- `value` can store long URL or hash-style indicators up to 2048 characters.
+- Implemented indexes include `incident_id`, `type`, `value`, `created_by_id`, `first_seen_at`, `last_seen_at`, and a non-unique composite index on `incident_id`, `type`, and `value`.
+- `incident_iocs.incident_id` uses cascade delete in the current migration, matching the implemented incident child-resource convention.
+- Eloquent relationships are `Incident::iocs()`, `IncidentIoc::incident()`, `IncidentIoc::createdBy()`, and `User::createdIocs()`.
+
+Implemented authorization:
+
+- `ioc.view` allows viewing the IOC panel on the incident detail page.
+- `ioc.manage` allows creating, updating, and deleting IOC records.
+- Security Manager and SOC Analyst roles receive both IOC permissions.
+- Reporter / Employee does not receive IOC permissions.
+- Super Admin passes IOC authorization through the global authorization override.
+
+Implemented nested incident routes:
+
+- `POST /incidents/{incident}/iocs` named `incidents.iocs.store`
+- `PATCH /incidents/{incident}/iocs/{incidentIoc}` named `incidents.iocs.update`
+- `DELETE /incidents/{incident}/iocs/{incidentIoc}` named `incidents.iocs.destroy`
+
+Implemented UI and tests:
+
+- The incident show page includes an IOC panel visible to users with `ioc.view`.
+- IOC create, edit, and delete controls are visible only to users with `ioc.manage`.
+- IOC coverage includes `IncidentIocDataModelTest`, `IncidentIocAuthorizationTest`, `IncidentIocWorkflowTest`, and `IncidentIocUiTest`.
 
 ## 9. Evidence / Attachment Tracking
 
