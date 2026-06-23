@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Incident extends Model
@@ -20,6 +21,7 @@ class Incident extends Model
     protected $fillable = [
         'incident_number',
         'reporter_id',
+        'current_assigned_to_id',
         'incident_category_id',
         'severity_level_id',
         'priority_level_id',
@@ -51,6 +53,22 @@ class Incident extends Model
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    /**
+     * User currently assigned to handle the incident.
+     */
+    public function currentAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'current_assigned_to_id');
+    }
+
+    /**
+     * Assignment history for this incident.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(IncidentAssignment::class);
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\PriorityLevel;
 use App\Models\SeverityLevel;
+use App\Services\Incident\IncidentAssignmentService;
 use App\Services\Incident\IncidentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,14 +50,33 @@ class IncidentController extends Controller
     /**
      * Display the specified incident.
      */
-    public function show(Request $request, Incident $incident, IncidentService $incidentService): View
-    {
-        abort_unless($incidentService->canView($request->user(), $incident), 403);
+    public function show(
+        Request $request,
+        Incident $incident,
+        IncidentService $incidentService,
+        IncidentAssignmentService $assignmentService,
+    ): View {
+        $user = $request->user();
 
-        $incident->load(['reporter', 'category', 'severity', 'priority']);
+        abort_unless($incidentService->canView($user, $incident), 403);
+
+        $incident->load([
+            'reporter',
+            'category',
+            'severity',
+            'priority',
+            'currentAssignee',
+            'assignments' => fn ($query) => $query
+                ->with(['assignedTo', 'assignedBy'])
+                ->latest('assigned_at'),
+        ]);
 
         return view('incidents.show', [
             'incident' => $incident,
+            'assignmentHistory' => $incident->assignments,
+            'assignableUsers' => $user->can('incident.assign')
+                ? $assignmentService->assignableUsers()
+                : collect(),
         ]);
     }
 

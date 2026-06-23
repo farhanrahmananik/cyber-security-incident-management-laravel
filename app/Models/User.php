@@ -68,6 +68,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Incidents currently assigned to this user.
+     */
+    public function assignedIncidents(): HasMany
+    {
+        return $this->hasMany(Incident::class, 'current_assigned_to_id');
+    }
+
+    /**
+     * Incident assignments received by this user.
+     */
+    public function incidentAssignmentsReceived(): HasMany
+    {
+        return $this->hasMany(IncidentAssignment::class, 'assigned_to_id');
+    }
+
+    /**
+     * Incident assignments made by this user.
+     */
+    public function incidentAssignmentsMade(): HasMany
+    {
+        return $this->hasMany(IncidentAssignment::class, 'assigned_by_id');
+    }
+
+    /**
      * Determine if the user has an active role.
      */
     public function hasRole(string $roleSlug): bool
