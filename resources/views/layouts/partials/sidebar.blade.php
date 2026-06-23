@@ -28,9 +28,8 @@
     @endcan
 
     @can('incident.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
+        <a class="sidebar-link {{ request()->routeIs('incidents.*') ? 'active' : '' }}" href="{{ route('incidents.index') }}">
             <span>Incidents</span>
-            <span class="planned-label">Planned</span>
         </a>
     @endcan
 

@@ -30,6 +30,7 @@ class RolePermissionSeeder extends Seeder
             'incident.view',
             'incident.create',
             'incident.update',
+            'incident.delete',
             'incident.assign',
             'incident.investigate',
             'incident.close',
