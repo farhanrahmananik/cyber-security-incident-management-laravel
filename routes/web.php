@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Incident\IncidentAssignmentController;
 use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
@@ -38,6 +39,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/', 'store')
                 ->middleware('permission:incident.create')
                 ->name('store');
+
+            Route::post('/{incident}/assign', [IncidentAssignmentController::class, 'store'])
+                ->middleware('permission:incident.assign')
+                ->name('assign');
 
             Route::get('/{incident}', 'show')
                 ->middleware('permission:incident.view')
