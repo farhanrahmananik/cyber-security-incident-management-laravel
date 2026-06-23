@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
@@ -21,6 +22,39 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard.index');
     })->middleware('permission:dashboard.view')->name('dashboard');
+
+    Route::prefix('incidents')
+        ->name('incidents.')
+        ->controller(IncidentController::class)
+        ->group(function () {
+            Route::get('/', 'index')
+                ->middleware('permission:incident.view')
+                ->name('index');
+
+            Route::get('/create', 'create')
+                ->middleware('permission:incident.create')
+                ->name('create');
+
+            Route::post('/', 'store')
+                ->middleware('permission:incident.create')
+                ->name('store');
+
+            Route::get('/{incident}', 'show')
+                ->middleware('permission:incident.view')
+                ->name('show');
+
+            Route::get('/{incident}/edit', 'edit')
+                ->middleware('permission:incident.update')
+                ->name('edit');
+
+            Route::match(['put', 'patch'], '/{incident}', 'update')
+                ->middleware('permission:incident.update')
+                ->name('update');
+
+            Route::delete('/{incident}', 'destroy')
+                ->middleware('permission:incident.delete')
+                ->name('destroy');
+        });
 
     Route::prefix('incident-setup/categories')
         ->name('incident-categories.')
