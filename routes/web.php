@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
+use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +61,27 @@ Route::middleware('auth')->group(function () {
 
             Route::delete('/{severityLevel}', 'destroy')
                 ->middleware('permission:severity-level.manage')
+                ->name('destroy');
+        });
+
+    Route::prefix('incident-setup/priority-levels')
+        ->name('priority-levels.')
+        ->controller(PriorityLevelController::class)
+        ->group(function () {
+            Route::get('/', 'index')
+                ->middleware('permission:priority-level.view')
+                ->name('index');
+
+            Route::post('/', 'store')
+                ->middleware('permission:priority-level.manage')
+                ->name('store');
+
+            Route::match(['put', 'patch'], '/{priorityLevel}', 'update')
+                ->middleware('permission:priority-level.manage')
+                ->name('update');
+
+            Route::delete('/{priorityLevel}', 'destroy')
+                ->middleware('permission:priority-level.manage')
                 ->name('destroy');
         });
 

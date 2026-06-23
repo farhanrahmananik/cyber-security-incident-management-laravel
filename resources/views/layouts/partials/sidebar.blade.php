@@ -54,6 +54,15 @@
                 <span>Severity Levels</span>
             </a>
         @endcan
+
+        @can('priority-level.view')
+            <a
+                class="sidebar-link {{ request()->routeIs('priority-levels.*') ? 'active' : '' }}"
+                href="{{ route('priority-levels.index') }}"
+            >
+                <span>Priority Levels</span>
+            </a>
+        @endcan
     @endcanany
 
     @can('investigation-note.view')
