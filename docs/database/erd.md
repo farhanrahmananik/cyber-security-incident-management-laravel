@@ -209,7 +209,7 @@ erDiagram
         BIGINT id PK
         BIGINT incident_id FK
         STRING type
-        STRING value
+        STRING value "2048"
         TEXT description
         STRING confidence
         DATETIME first_seen_at
@@ -291,8 +291,8 @@ erDiagram
     incidents ||--o{ investigation_notes : has_investigation_notes
     users ||--o{ investigation_notes : writes_notes
 
-    incidents ||--o{ incident_iocs : has_iocs
-    users ||--o{ incident_iocs : records_iocs
+    incidents ||--o{ incident_iocs : has_indicators
+    users ||--o{ incident_iocs : creates_iocs
 
     incidents ||--o{ incident_evidences : has_evidence
     users ||--o{ incident_evidences : uploads_evidence
@@ -314,7 +314,7 @@ erDiagram
 - Each incident belongs to one `incident_categories` record, one `severity_levels` record, one `priority_levels` record, and one `incident_statuses` record.
 - `incidents` has many `incident_assignments`, `investigation_notes`, `incident_iocs`, `incident_evidences`, and `response_actions`.
 - `investigation_notes` records analyst timeline entries for an incident.
-- `incident_iocs` records indicators of compromise such as IP addresses, domains, URLs, file hashes, email addresses, and malware signatures.
+- `incident_iocs` records indicators of compromise such as IP addresses, domains, URLs, file hashes, email addresses, malware filenames, process names, registry keys, and other observables.
 - `incident_evidences` stores evidence attachment metadata while files remain in Laravel storage.
 - `response_actions` records containment, eradication, recovery, and communication actions.
 - `audit_logs` can optionally reference a user, allowing system actions to be logged while keeping polymorphic-style auditable fields free of strict foreign keys.
@@ -328,7 +328,7 @@ erDiagram
 - Status workflow is controlled through `incident_statuses`, supporting stages such as reported, triaged, assigned, investigating, contained, resolved, and closed.
 - Analyst assignment is supported by nullable `incidents.current_assigned_to_id` for quick filtering and by `incident_assignments` for full assignment history.
 - Investigation notes are stored in `investigation_notes` so SOC analysts can maintain a clear incident timeline.
-- IOC tracking is handled through `incident_iocs`, allowing analysts to record observable indicators connected to an incident.
+- IOC tracking is handled through `incident_iocs`, allowing analysts to record observable indicators connected to an incident. In the Laravel implementation, these records map to `Incident::iocs()`, `IncidentIoc::incident()`, `IncidentIoc::createdBy()`, and `User::createdIocs()`.
 - Evidence tracking is handled through `incident_evidences`, which stores metadata, file paths, file sizes, MIME types, and checksums while files live in Laravel storage.
 - Response actions are recorded in `response_actions` to show what containment, remediation, or communication steps were performed.
 - Audit logging is handled through `audit_logs`, preserving user-driven and system-driven security events for accountability.

@@ -326,11 +326,11 @@ Restrict deletion to preserve the investigation timeline.
 - `id` big integer primary key
 - `incident_id` foreign id
 - `type` string
-- `value` string
+- `value` string length 2048
 - `description` text nullable
 - `confidence` string nullable
-- `first_seen_at` nullable datetime
-- `last_seen_at` nullable datetime
+- `first_seen_at` nullable timestamp
+- `last_seen_at` nullable timestamp
 - `created_by_id` foreign id
 - `created_at` timestamp nullable
 - `updated_at` timestamp nullable
@@ -340,6 +340,18 @@ Restrict deletion to preserve the investigation timeline.
 - `incident_id` references `incidents`
 - `created_by_id` references `users`
 
+### Implemented Type Values
+
+- `ip_address`
+- `domain`
+- `url`
+- `file_hash`
+- `email_address`
+- `malware_filename`
+- `process_name`
+- `registry_key`
+- `other`
+
 ### Indexes
 
 - Index on `incident_id`
@@ -348,10 +360,30 @@ Restrict deletion to preserve the investigation timeline.
 - Index on `created_by_id`
 - Index on `first_seen_at`
 - Index on `last_seen_at`
+- Non-unique composite index on `incident_id`, `type`, and `value`
 
 ### Optional Uniqueness
 
-Do not enforce global uniqueness on `value`, because the same IOC may appear in different incidents. A future composite uniqueness rule can be considered for `incident_id`, `type`, and `value`.
+Do not enforce global uniqueness on `value`, because the same IOC may appear in different incidents. The implemented composite index on `incident_id`, `type`, and `value` supports incident-level IOC lookup and correlation without enforcing uniqueness. The `value` field supports long URL or hash-style values up to 2048 characters; MySQL implementations may use prefix indexing for this long string column.
+
+### Delete Behavior
+
+The implemented migration uses cascade delete from `incident_iocs.incident_id` to `incidents.id`, matching the current incident child-resource convention. The `created_by_id` column references `users`, preserving the user who recorded the IOC; production operation should prefer user deactivation over physical deletion.
+
+### Eloquent Relationships
+
+- `Incident::iocs()`
+- `IncidentIoc::incident()`
+- `IncidentIoc::createdBy()`
+- `User::createdIocs()`
+
+### Authorization, Routes, UI, and Tests
+
+- Permissions: `ioc.view` and `ioc.manage`
+- Role access: Security Manager and SOC Analyst have both IOC permissions; Reporter / Employee has none; Super Admin passes through global authorization behavior.
+- Routes: `POST /incidents/{incident}/iocs` named `incidents.iocs.store`, `PATCH /incidents/{incident}/iocs/{incidentIoc}` named `incidents.iocs.update`, and `DELETE /incidents/{incident}/iocs/{incidentIoc}` named `incidents.iocs.destroy`
+- UI: the incident show page displays the IOC panel for `ioc.view`; create, edit, and delete controls require `ioc.manage`
+- Tests: `IncidentIocDataModelTest`, `IncidentIocAuthorizationTest`, `IncidentIocWorkflowTest`, and `IncidentIocUiTest`
 
 ## 16. incident_evidences Table Blueprint
 
@@ -496,7 +528,7 @@ Laravel-style example:
 | --- | --- | --- |
 | Pivot tables | Cascade acceptable for local/dev cleanup | Production should normally deactivate users, roles, and permissions instead of deleting them. |
 | Master data referenced by incidents | Restrict | Categories, severity levels, priority levels, and statuses should remain available for historical incidents. |
-| Incident workflow records | Restrict | Assignments, notes, IOCs, evidences, and response actions are part of the security history. |
+| Incident workflow records | Mixed by implemented table | Assignments, notes, evidences, and response actions are part of the security history. IOC records currently cascade with incident deletion according to the implemented `incident_iocs.incident_id` migration. |
 | User references in security history | Mostly restrict | Accountability should be preserved for reporters, analysts, responders, and report generators. |
 | Nullable optional references | `nullOnDelete` acceptable only when accountability is not broken | Example: `incidents.current_assigned_to_id` may be nullable for operational convenience. |
 | Audit logs `user_id` | `nullOnDelete` acceptable only if user removal is forced | User deactivation is preferred so audit accountability remains intact. |
