@@ -5,11 +5,29 @@ namespace App\Services\Incident;
 use App\Models\Incident;
 use App\Models\IncidentAssignment;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class IncidentAssignmentService
 {
+    /**
+     * Get users eligible to receive incident assignments.
+     *
+     * @return Collection<int, User>
+     */
+    public function assignableUsers(): Collection
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereHas('roles', function ($query): void {
+                $query->whereIn('slug', ['soc-analyst', 'security-manager'])
+                    ->where('roles.is_active', true);
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
     /**
      * Assign an incident to an eligible analyst or security manager.
      */
