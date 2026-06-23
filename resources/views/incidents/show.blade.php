@@ -174,6 +174,122 @@
             </div>
         </div>
 
+        @can('investigation-note.view')
+            <div class="col-12">
+                <div class="bg-white border rounded-2 p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                        <div class="flex-fill">
+                            <h2 class="h5 mb-1">Investigation Notes</h2>
+                            <p class="text-secondary mb-4">
+                                Internal SOC notes for triage, analysis, and response tracking.
+                            </p>
+
+                            @forelse ($investigationNotes as $investigationNote)
+                                <div class="border rounded-2 p-3 mb-3">
+                                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                        <div>
+                                            <p class="fw-semibold mb-1">
+                                                {{ $investigationNote->author?->name ?? 'Unknown author' }}
+                                            </p>
+                                            <p class="text-secondary mb-0">
+                                                {{ $investigationNote->created_at?->format('Y-m-d H:i') }}
+                                            </p>
+                                        </div>
+
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @can('investigation-note.update')
+                                                <details>
+                                                    <summary class="btn btn-outline-primary btn-sm">
+                                                        Edit
+                                                    </summary>
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('incidents.investigation-notes.update', [$incident, $investigationNote]) }}"
+                                                        class="mt-3"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+
+                                                        <label for="note_{{ $investigationNote->id }}" class="form-label">
+                                                            Note
+                                                        </label>
+                                                        <textarea
+                                                            id="note_{{ $investigationNote->id }}"
+                                                            name="note"
+                                                            class="form-control @error('note') is-invalid @enderror"
+                                                            rows="4"
+                                                            maxlength="5000"
+                                                            required
+                                                        >{{ old('note', $investigationNote->note) }}</textarea>
+                                                        @error('note')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+
+                                                        <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                                            Save Note
+                                                        </button>
+                                                    </form>
+                                                </details>
+                                            @endcan
+
+                                            @can('investigation-note.delete')
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('incidents.investigation-notes.destroy', [$incident, $investigationNote]) }}"
+                                                    onsubmit="return confirm('Delete this investigation note?');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            @endcan
+                                        </div>
+                                    </div>
+
+                                    <p class="mb-0" style="white-space: pre-line;">{{ $investigationNote->note }}</p>
+                                </div>
+                            @empty
+                                <div class="border rounded-2 p-3 text-secondary">
+                                    No investigation notes have been recorded yet.
+                                </div>
+                            @endforelse
+                        </div>
+
+                        @can('investigation-note.create')
+                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                                <h3 class="h6 mb-3">Add Investigation Note</h3>
+
+                                <form method="POST" action="{{ route('incidents.investigation-notes.store', $incident) }}">
+                                    @csrf
+
+                                    <div class="mb-3">
+                                        <label for="note" class="form-label">Note</label>
+                                        <textarea
+                                            id="note"
+                                            name="note"
+                                            class="form-control @error('note') is-invalid @enderror"
+                                            rows="5"
+                                            maxlength="5000"
+                                            required
+                                        >{{ old('note') }}</textarea>
+                                        @error('note')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        Add Note
+                                    </button>
+                                </form>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+        @endcan
+
         <div class="col-lg-7">
             <div class="bg-white border rounded-2 p-4 h-100">
                 <h2 class="h5 mb-3">Description</h2>
