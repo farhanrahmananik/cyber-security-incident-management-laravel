@@ -31,6 +31,17 @@
                         This is a temporary authenticated landing page for the auth foundation.
                         Incident and dashboard modules will be implemented in later steps.
                     </p>
+
+                    @can('dashboard.view')
+                        <div class="border-top mt-4 pt-4">
+                            <p class="fw-semibold mb-1">Authorization active</p>
+                            <p class="text-secondary mb-0">The dashboard permission gate is allowing this protected page.</p>
+
+                            @can('incident.assign')
+                                <p class="text-secondary mb-0 mt-2">Incident assignment access available.</p>
+                            @endcan
+                        </div>
+                    @endcan
                 </div>
             </div>
         </div>

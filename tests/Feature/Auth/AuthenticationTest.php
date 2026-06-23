@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -98,10 +100,26 @@ class AuthenticationTest extends TestCase
 
     public function test_authenticated_users_can_access_dashboard(): void
     {
+        $role = Role::query()->create([
+            'name' => 'SOC Analyst',
+            'slug' => 'soc-analyst',
+            'is_active' => true,
+        ]);
+
+        $permission = Permission::query()->create([
+            'name' => 'Dashboard View',
+            'slug' => 'dashboard.view',
+            'group_name' => 'dashboard',
+            'is_active' => true,
+        ]);
+
+        $role->permissions()->attach($permission);
+
         $user = User::factory()->create([
             'name' => 'SOC Analyst',
             'is_active' => true,
         ]);
+        $user->roles()->attach($role);
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
