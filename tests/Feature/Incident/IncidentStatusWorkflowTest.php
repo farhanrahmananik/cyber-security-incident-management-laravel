@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Incident;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
+use App\Models\IncidentStatusTransition;
 use App\Models\Permission;
 use App\Models\PriorityLevel;
 use App\Models\Role;
@@ -166,6 +168,217 @@ class IncidentStatusWorkflowTest extends TestCase
             'title' => 'Triaged reporter incident',
             'status' => 'triaged',
         ]);
+    }
+
+    public function test_authorized_security_manager_can_transition_reported_to_triaged(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $response = $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'triaged',
+            'notes' => 'Initial SOC triage completed.',
+        ]);
+
+        $response->assertRedirect(route('incidents.show', $incident));
+
+        $this->assertDatabaseHas('incidents', [
+            'id' => $incident->id,
+            'status' => 'triaged',
+        ]);
+    }
+
+    public function test_invalid_status_is_rejected_by_dedicated_status_workflow(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $response = $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'not-a-real-status',
+        ]);
+
+        $response->assertSessionHasErrors('status');
+        $this->assertSame('reported', $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_transitions', 0);
+    }
+
+    public function test_invalid_transition_is_rejected_by_dedicated_status_workflow(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update', 'incident.close'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $response = $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'closed',
+        ]);
+
+        $response->assertSessionHasErrors('status');
+        $this->assertSame('reported', $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_transitions', 0);
+    }
+
+    public function test_reporter_employee_cannot_transition_status(): void
+    {
+        $this->createPermission('incident.status.update');
+        $reporter = $this->createUserWithPermissions(
+            [],
+            'reporter-employee',
+            'Reporter / Employee',
+        );
+        $incident = $this->createIncidentFor($reporter);
+
+        $response = $this->actingAs($reporter)->patch(route('incidents.status.update', $incident), [
+            'status' => 'triaged',
+        ]);
+
+        $response->assertForbidden();
+        $this->assertSame('reported', $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_transitions', 0);
+    }
+
+    public function test_soc_analyst_can_perform_normal_status_transition(): void
+    {
+        $socAnalyst = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'soc-analyst',
+            'SOC Analyst',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter, ['status' => 'triaged']);
+
+        $response = $this->actingAs($socAnalyst)->patch(route('incidents.status.update', $incident), [
+            'status' => 'investigating',
+        ]);
+
+        $response->assertRedirect(route('incidents.show', $incident));
+        $this->assertSame('investigating', $incident->refresh()->status);
+    }
+
+    public function test_soc_analyst_cannot_close_resolved_incident(): void
+    {
+        $this->createPermission('incident.close');
+        $socAnalyst = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'soc-analyst',
+            'SOC Analyst',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter, ['status' => 'resolved']);
+
+        $response = $this->actingAs($socAnalyst)->patch(route('incidents.status.update', $incident), [
+            'status' => 'closed',
+        ]);
+
+        $response->assertForbidden();
+        $this->assertSame('resolved', $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_transitions', 0);
+    }
+
+    public function test_security_manager_can_close_resolved_incident(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update', 'incident.close'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter, ['status' => 'resolved']);
+
+        $response = $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'closed',
+        ]);
+
+        $response->assertRedirect(route('incidents.show', $incident));
+        $this->assertSame('closed', $incident->refresh()->status);
+    }
+
+    public function test_transition_creates_incident_status_transition_row(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'triaged',
+            'notes' => 'Triage details kept in workflow history.',
+        ]);
+
+        $this->assertDatabaseHas('incident_status_transitions', [
+            'incident_id' => $incident->id,
+            'changed_by_id' => $securityManager->id,
+            'from_status' => 'reported',
+            'to_status' => 'triaged',
+            'notes' => 'Triage details kept in workflow history.',
+        ]);
+
+        $this->assertTrue($incident->statusTransitions()->first() instanceof IncidentStatusTransition);
+    }
+
+    public function test_transition_records_status_changed_audit_log(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'triaged',
+            'notes' => 'This note should not be copied into audit payload values.',
+        ]);
+
+        $auditLog = AuditLog::query()
+            ->where('event', 'incident.status_changed')
+            ->where('auditable_type', $incident->getMorphClass())
+            ->where('auditable_id', $incident->id)
+            ->firstOrFail();
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['status' => 'reported'], $auditLog->old_values);
+        $this->assertSame(['status' => 'triaged'], $auditLog->new_values);
+        $this->assertStringNotContainsString(
+            'This note should not be copied',
+            json_encode($auditLog->new_values, JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function test_closed_incident_cannot_transition_further(): void
+    {
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.status.update', 'incident.close'],
+            'security-manager',
+            'Security Manager',
+        );
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter, ['status' => 'closed']);
+
+        $response = $this->actingAs($securityManager)->patch(route('incidents.status.update', $incident), [
+            'status' => 'investigating',
+        ]);
+
+        $response->assertSessionHasErrors('status');
+        $this->assertSame('closed', $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_transitions', 0);
     }
 
     /**

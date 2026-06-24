@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Evidence\IncidentEvidenceController;
 use App\Http\Controllers\Incident\IncidentAssignmentController;
 use App\Http\Controllers\Incident\IncidentController;
+use App\Http\Controllers\Incident\IncidentStatusController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
@@ -102,6 +103,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/{incident}/assign', [IncidentAssignmentController::class, 'store'])
                 ->middleware('permission:incident.assign')
                 ->name('assign');
+
+            Route::patch('/{incident}/status', [IncidentStatusController::class, 'update'])
+                ->middleware('permission:incident.status.update')
+                ->name('status.update');
 
             Route::post('/{incident}/investigation-notes', [InvestigationNoteController::class, 'store'])
                 ->middleware('permission:investigation-note.create')

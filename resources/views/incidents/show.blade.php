@@ -55,6 +55,26 @@
             'cancelled' => 'text-bg-warning',
         ];
 
+        $incidentStatusLabels = [
+            'reported' => 'Reported',
+            'triaged' => 'Triaged',
+            'assigned' => 'Assigned',
+            'investigating' => 'Investigating',
+            'contained' => 'Contained',
+            'resolved' => 'Resolved',
+            'closed' => 'Closed',
+        ];
+
+        $incidentStatusBadgeClasses = [
+            'reported' => 'text-bg-secondary',
+            'triaged' => 'text-bg-info',
+            'assigned' => 'text-bg-primary',
+            'investigating' => 'text-bg-warning',
+            'contained' => 'text-bg-dark',
+            'resolved' => 'text-bg-success',
+            'closed' => 'text-bg-light text-dark border',
+        ];
+
         $formatEvidenceFileSize = static function (?int $bytes): string {
             $bytes ??= 0;
 
@@ -82,8 +102,8 @@
                     <div>
                         <p class="text-secondary mb-1">{{ $incident->incident_number }}</p>
                         <h2 class="h4 mb-2">{{ $incident->title }}</h2>
-                        <span class="badge text-bg-info">
-                            {{ str($incident->status)->replace('_', ' ')->title() }}
+                        <span class="badge {{ $incidentStatusBadgeClasses[$incident->status] ?? 'text-bg-info' }}">
+                            {{ $incidentStatusLabels[$incident->status] ?? str($incident->status)->replace('_', ' ')->title() }}
                         </span>
                     </div>
                     <div class="text-md-end">
@@ -134,6 +154,118 @@
             <div class="bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Detected At</p>
                 <p class="fw-semibold mb-0">{{ $incident->detected_at?->format('Y-m-d H:i') ?? 'Not provided' }}</p>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="bg-white border rounded-2 p-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                    <div class="flex-fill">
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                            <div>
+                                <h2 class="h5 mb-1">Incident Status Workflow</h2>
+                                <p class="text-secondary mb-0">
+                                    Track controlled incident status transitions from report intake through closure.
+                                </p>
+                            </div>
+                            <div class="text-md-end">
+                                <p class="text-secondary mb-1">Current Status</p>
+                                <span class="badge {{ $incidentStatusBadgeClasses[$incident->status] ?? 'text-bg-info' }}">
+                                    {{ $incidentStatusLabels[$incident->status] ?? str($incident->status)->replace('_', ' ')->title() }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 mb-3">Status Transition History</h3>
+                        @forelse ($statusTransitions as $statusTransition)
+                            <div class="border rounded-2 p-3 mb-3">
+                                <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                                    <div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                            <span class="badge {{ $incidentStatusBadgeClasses[$statusTransition->from_status] ?? 'text-bg-secondary' }}">
+                                                {{ $incidentStatusLabels[$statusTransition->from_status] ?? str($statusTransition->from_status)->replace('_', ' ')->title() }}
+                                            </span>
+                                            <span class="text-secondary">to</span>
+                                            <span class="badge {{ $incidentStatusBadgeClasses[$statusTransition->to_status] ?? 'text-bg-info' }}">
+                                                {{ $incidentStatusLabels[$statusTransition->to_status] ?? str($statusTransition->to_status)->replace('_', ' ')->title() }}
+                                            </span>
+                                        </div>
+                                        <p class="text-secondary mb-0">
+                                            Changed by {{ $statusTransition->changedBy?->name ?? 'System' }}
+                                        </p>
+                                    </div>
+                                    <div class="text-md-end text-secondary">
+                                        {{ $statusTransition->created_at?->format('Y-m-d H:i') }}
+                                    </div>
+                                </div>
+
+                                @if ($statusTransition->notes)
+                                    <p class="mb-0 mt-3" style="white-space: pre-line;">{{ $statusTransition->notes }}</p>
+                                @endif
+                            </div>
+                        @empty
+                            <div class="border rounded-2 p-3 text-secondary">
+                                No status transitions recorded yet.
+                            </div>
+                        @endforelse
+                    </div>
+
+                    @can('incident.status.update')
+                        <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                            <h3 class="h6 mb-3">Update Status</h3>
+
+                            @if (count($availableStatusTransitions) > 0)
+                                <form method="POST" action="{{ route('incidents.status.update', $incident) }}">
+                                    @csrf
+                                    @method('PATCH')
+
+                                    <div class="mb-3">
+                                        <label for="status" class="form-label">Next Status</label>
+                                        <select
+                                            id="status"
+                                            name="status"
+                                            class="form-select @error('status') is-invalid @enderror"
+                                            required
+                                        >
+                                            <option value="">Select status</option>
+                                            @foreach ($availableStatusTransitions as $availableStatusTransition)
+                                                <option
+                                                    value="{{ $availableStatusTransition }}"
+                                                    @selected(old('status') === $availableStatusTransition)
+                                                >
+                                                    {{ $incidentStatusLabels[$availableStatusTransition] ?? str($availableStatusTransition)->replace('_', ' ')->title() }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('status')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="status_notes" class="form-label">Notes</label>
+                                        <textarea
+                                            id="status_notes"
+                                            name="notes"
+                                            class="form-control @error('notes') is-invalid @enderror"
+                                            rows="3"
+                                            maxlength="1000"
+                                        >{{ old('notes') }}</textarea>
+                                        @error('notes')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">Update Status</button>
+                                </form>
+                            @else
+                                <p class="text-secondary mb-0">
+                                    No further status transitions are available for this incident.
+                                </p>
+                            @endif
+                        </div>
+                    @endcan
+                </div>
             </div>
         </div>
 
