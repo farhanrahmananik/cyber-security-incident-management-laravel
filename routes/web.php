@@ -7,8 +7,9 @@ use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
 use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
-use App\Http\Controllers\Ioc\IncidentIocController;
 use App\Http\Controllers\Investigation\InvestigationNoteController;
+use App\Http\Controllers\Ioc\IncidentIocController;
+use App\Http\Controllers\ResponseAction\ResponseActionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -86,6 +87,18 @@ Route::middleware('auth')->group(function () {
             Route::get('/{incident}/evidences/{incidentEvidence}/download', [IncidentEvidenceController::class, 'download'])
                 ->middleware('permission:evidence.view')
                 ->name('evidences.download');
+
+            Route::post('/{incident}/response-actions', [ResponseActionController::class, 'store'])
+                ->middleware('permission:response-action.manage')
+                ->name('response-actions.store');
+
+            Route::patch('/{incident}/response-actions/{responseAction}', [ResponseActionController::class, 'update'])
+                ->middleware('permission:response-action.manage')
+                ->name('response-actions.update');
+
+            Route::delete('/{incident}/response-actions/{responseAction}', [ResponseActionController::class, 'destroy'])
+                ->middleware('permission:response-action.manage')
+                ->name('response-actions.destroy');
 
             Route::get('/{incident}', 'show')
                 ->middleware('permission:incident.view')

@@ -31,6 +31,30 @@
             'high' => 'High',
         ];
 
+        $responseActionTypeLabels = [
+            'containment' => 'Containment',
+            'eradication' => 'Eradication',
+            'recovery' => 'Recovery',
+            'communication' => 'Communication',
+            'monitoring' => 'Monitoring',
+            'lessons_learned' => 'Lessons Learned',
+            'other' => 'Other',
+        ];
+
+        $responseActionStatusLabels = [
+            'planned' => 'Planned',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+        ];
+
+        $responseActionStatusBadgeClasses = [
+            'planned' => 'text-bg-secondary',
+            'in_progress' => 'text-bg-info',
+            'completed' => 'text-bg-success',
+            'cancelled' => 'text-bg-warning',
+        ];
+
         $formatEvidenceFileSize = static function (?int $bytes): string {
             $bytes ??= 0;
 
@@ -850,6 +874,318 @@
 
                                     <button type="submit" class="btn btn-primary">
                                         Upload Evidence
+                                    </button>
+                                </form>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+        @endcan
+
+        @can('response-action.view')
+            <div class="col-12">
+                <div class="bg-white border rounded-2 p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                        <div class="flex-fill">
+                            <h2 class="h5 mb-1">Response Actions</h2>
+                            <p class="text-secondary mb-4">
+                                Track containment, eradication, recovery, communication, monitoring, and lessons learned work.
+                            </p>
+
+                            @forelse ($responseActions as $responseAction)
+                                <div class="border rounded-2 p-3 mb-3">
+                                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+                                        <div class="flex-fill">
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                                <h3 class="h6 mb-0">{{ $responseAction->title }}</h3>
+                                                <span class="badge text-bg-primary">
+                                                    {{ $responseActionTypeLabels[$responseAction->action_type] ?? str($responseAction->action_type)->replace('_', ' ')->title() }}
+                                                </span>
+                                                <span class="badge {{ $responseActionStatusBadgeClasses[$responseAction->status] ?? 'text-bg-secondary' }}">
+                                                    {{ $responseActionStatusLabels[$responseAction->status] ?? str($responseAction->status)->replace('_', ' ')->title() }}
+                                                </span>
+                                            </div>
+
+                                            @if ($responseAction->description)
+                                                <p class="mb-3" style="white-space: pre-line;">{{ $responseAction->description }}</p>
+                                            @endif
+
+                                            <div class="row g-2 text-secondary small">
+                                                <div class="col-md-6">
+                                                    Started:
+                                                    <span class="text-body">
+                                                        {{ $responseAction->started_at?->format('Y-m-d H:i') ?? 'Not started' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Completed:
+                                                    <span class="text-body">
+                                                        {{ $responseAction->completed_at?->format('Y-m-d H:i') ?? 'Not completed' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Performed by:
+                                                    <span class="text-body">
+                                                        {{ $responseAction->performedBy?->name ?? 'Unknown' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Updated:
+                                                    <span class="text-body">
+                                                        {{ $responseAction->updated_at?->format('Y-m-d H:i') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @can('response-action.manage')
+                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                                <details>
+                                                    <summary class="btn btn-outline-primary btn-sm">
+                                                        Edit
+                                                    </summary>
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('incidents.response-actions.update', [$incident, $responseAction]) }}"
+                                                        class="mt-3 border rounded-2 p-3"
+                                                        style="min-width: min(100%, 420px);"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+
+                                                        <div class="mb-3">
+                                                            <label for="response_action_type_{{ $responseAction->id }}" class="form-label">Action Type</label>
+                                                            <select
+                                                                id="response_action_type_{{ $responseAction->id }}"
+                                                                name="action_type"
+                                                                class="form-select @error('action_type') is-invalid @enderror"
+                                                                required
+                                                            >
+                                                                @foreach ($responseActionTypeLabels as $value => $label)
+                                                                    <option value="{{ $value }}" @selected(old('action_type', $responseAction->action_type) === $value)>
+                                                                        {{ $label }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('action_type')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="response_action_status_{{ $responseAction->id }}" class="form-label">Status</label>
+                                                            <select
+                                                                id="response_action_status_{{ $responseAction->id }}"
+                                                                name="status"
+                                                                class="form-select @error('status') is-invalid @enderror"
+                                                                required
+                                                            >
+                                                                @foreach ($responseActionStatusLabels as $value => $label)
+                                                                    <option value="{{ $value }}" @selected(old('status', $responseAction->status) === $value)>
+                                                                        {{ $label }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('status')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="response_action_title_{{ $responseAction->id }}" class="form-label">Title</label>
+                                                            <input
+                                                                id="response_action_title_{{ $responseAction->id }}"
+                                                                type="text"
+                                                                name="title"
+                                                                class="form-control @error('title') is-invalid @enderror"
+                                                                value="{{ old('title', $responseAction->title) }}"
+                                                                maxlength="255"
+                                                                required
+                                                            >
+                                                            @error('title')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="response_action_description_{{ $responseAction->id }}" class="form-label">Description</label>
+                                                            <textarea
+                                                                id="response_action_description_{{ $responseAction->id }}"
+                                                                name="description"
+                                                                class="form-control @error('description') is-invalid @enderror"
+                                                                rows="3"
+                                                            >{{ old('description', $responseAction->description) }}</textarea>
+                                                            @error('description')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="row g-3 mb-3">
+                                                            <div class="col-md-6">
+                                                                <label for="response_action_started_at_{{ $responseAction->id }}" class="form-label">Started At</label>
+                                                                <input
+                                                                    id="response_action_started_at_{{ $responseAction->id }}"
+                                                                    type="datetime-local"
+                                                                    name="started_at"
+                                                                    class="form-control @error('started_at') is-invalid @enderror"
+                                                                    value="{{ old('started_at', $responseAction->started_at?->format('Y-m-d\TH:i')) }}"
+                                                                >
+                                                                @error('started_at')
+                                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                                @enderror
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="response_action_completed_at_{{ $responseAction->id }}" class="form-label">Completed At</label>
+                                                                <input
+                                                                    id="response_action_completed_at_{{ $responseAction->id }}"
+                                                                    type="datetime-local"
+                                                                    name="completed_at"
+                                                                    class="form-control @error('completed_at') is-invalid @enderror"
+                                                                    value="{{ old('completed_at', $responseAction->completed_at?->format('Y-m-d\TH:i')) }}"
+                                                                >
+                                                                @error('completed_at')
+                                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                                @enderror
+                                                            </div>
+                                                        </div>
+
+                                                        <button type="submit" class="btn btn-primary btn-sm">
+                                                            Update
+                                                        </button>
+                                                    </form>
+                                                </details>
+
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('incidents.response-actions.destroy', [$incident, $responseAction]) }}"
+                                                    onsubmit="return confirm('Delete this response action?');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endcan
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="border rounded-2 p-3 text-secondary">
+                                    No response actions have been recorded yet.
+                                </div>
+                            @endforelse
+                        </div>
+
+                        @can('response-action.manage')
+                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                                <h3 class="h6 mb-3">Add Response Action</h3>
+
+                                <form
+                                    method="POST"
+                                    action="{{ route('incidents.response-actions.store', $incident) }}"
+                                >
+                                    @csrf
+
+                                    <div class="mb-3">
+                                        <label for="response_action_type" class="form-label">Action Type</label>
+                                        <select
+                                            id="response_action_type"
+                                            name="action_type"
+                                            class="form-select @error('action_type') is-invalid @enderror"
+                                            required
+                                        >
+                                            @foreach ($responseActionTypeLabels as $value => $label)
+                                                <option value="{{ $value }}" @selected(old('action_type', 'containment') === $value)>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('action_type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="response_action_status" class="form-label">Status</label>
+                                        <select
+                                            id="response_action_status"
+                                            name="status"
+                                            class="form-select @error('status') is-invalid @enderror"
+                                            required
+                                        >
+                                            @foreach ($responseActionStatusLabels as $value => $label)
+                                                <option value="{{ $value }}" @selected(old('status', 'planned') === $value)>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('status')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="response_action_title" class="form-label">Title</label>
+                                        <input
+                                            id="response_action_title"
+                                            type="text"
+                                            name="title"
+                                            class="form-control @error('title') is-invalid @enderror"
+                                            value="{{ old('title') }}"
+                                            maxlength="255"
+                                            required
+                                        >
+                                        @error('title')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="response_action_description" class="form-label">Description</label>
+                                        <textarea
+                                            id="response_action_description"
+                                            name="description"
+                                            class="form-control @error('description') is-invalid @enderror"
+                                            rows="3"
+                                        >{{ old('description') }}</textarea>
+                                        @error('description')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="response_action_started_at" class="form-label">Started At</label>
+                                            <input
+                                                id="response_action_started_at"
+                                                type="datetime-local"
+                                                name="started_at"
+                                                class="form-control @error('started_at') is-invalid @enderror"
+                                                value="{{ old('started_at') }}"
+                                            >
+                                            @error('started_at')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="response_action_completed_at" class="form-label">Completed At</label>
+                                            <input
+                                                id="response_action_completed_at"
+                                                type="datetime-local"
+                                                name="completed_at"
+                                                class="form-control @error('completed_at') is-invalid @enderror"
+                                                value="{{ old('completed_at') }}"
+                                            >
+                                            @error('completed_at')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        Add Response Action
                                     </button>
                                 </form>
                             </div>

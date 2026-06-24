@@ -96,6 +96,14 @@ class Incident extends Model
     }
 
     /**
+     * Response actions recorded for this incident.
+     */
+    public function responseActions(): HasMany
+    {
+        return $this->hasMany(ResponseAction::class);
+    }
+
+    /**
      * Category assigned to the incident.
      */
     public function category(): BelongsTo

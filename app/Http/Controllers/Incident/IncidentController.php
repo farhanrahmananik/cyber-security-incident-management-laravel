@@ -63,6 +63,7 @@ class IncidentController extends Controller
         $canViewInvestigationNotes = $user->can('investigation-note.view');
         $canViewIocs = $user->can('ioc.view');
         $canViewEvidences = $user->can('evidence.view');
+        $canViewResponseActions = $user->can('response-action.view');
 
         $relations = [
             'reporter',
@@ -93,6 +94,12 @@ class IncidentController extends Controller
                 ->latest();
         }
 
+        if ($canViewResponseActions) {
+            $relations['responseActions'] = fn ($query) => $query
+                ->with('performedBy')
+                ->latest();
+        }
+
         $incident->load($relations);
 
         return view('incidents.show', [
@@ -109,6 +116,9 @@ class IncidentController extends Controller
                 : collect(),
             'evidences' => $canViewEvidences
                 ? $incident->evidences
+                : collect(),
+            'responseActions' => $canViewResponseActions
+                ? $incident->responseActions
                 : collect(),
         ]);
     }

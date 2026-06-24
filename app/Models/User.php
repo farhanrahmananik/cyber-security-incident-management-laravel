@@ -124,6 +124,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Response actions performed by this user.
+     */
+    public function performedResponseActions(): HasMany
+    {
+        return $this->hasMany(ResponseAction::class, 'performed_by');
+    }
+
+    /**
      * Determine if the user has an active role.
      */
     public function hasRole(string $roleSlug): bool

@@ -439,35 +439,68 @@ Recommended notes:
 
 ### response_actions
 
-The `response_actions` table records containment, eradication, recovery, communication, and remediation actions.
+The `response_actions` table records containment, eradication, recovery, communication, monitoring, lessons learned, and other response work performed for an incident.
 
 Recommended columns:
 
 - `id`
 - `incident_id`
+- `performed_by`
 - `action_type`
-- `description`
-- `performed_by_id`
-- `performed_at`
-- `outcome` nullable
+- `status`
+- `title`
+- `description` nullable
+- `started_at` nullable
+- `completed_at` nullable
 - `created_at`
 - `updated_at`
 
-Examples:
+Implemented action type values:
 
-- Account disabled
-- Host isolated
-- Firewall rule added
-- Malware removed
-- Password reset
-- User notified
+- `containment`
+- `eradication`
+- `recovery`
+- `communication`
+- `monitoring`
+- `lessons_learned`
+- `other`
+
+Implemented status values:
+
+- `planned`
+- `in_progress`
+- `completed`
+- `cancelled`
 
 Recommended notes:
 
-- `incident_id` references `incidents`.
-- `performed_by_id` references the user who performed or recorded the action.
-- `performed_at` should capture the actual action time, not only the record creation time.
-- These records support post-incident review and operational reporting.
+- `response_actions.incident_id` references `incidents.id`.
+- `response_actions.performed_by` references `users.id`.
+- `performed_by` is nullable so historical response records can remain readable if an account is removed under exceptional circumstances.
+- `action_type` and `status` are stored as strings for workflow flexibility, with application-level validation controlling allowed values.
+- `started_at` and `completed_at` capture operational timing separately from record creation and update timestamps.
+- These records support post-incident review, response accountability, and operational reporting.
+- Eloquent relationships are `Incident::responseActions()`, `ResponseAction::incident()`, `ResponseAction::performedBy()`, and `User::performedResponseActions()`.
+
+Implemented authorization:
+
+- `response-action.view` allows viewing the Response Actions panel on the incident detail page.
+- `response-action.manage` allows creating, updating, and deleting response action records.
+- Security Manager and SOC Analyst roles receive both Response Action permissions.
+- Reporter / Employee does not receive Response Action permissions.
+- Super Admin passes Response Action authorization through the global authorization override.
+
+Implemented nested incident routes:
+
+- `POST /incidents/{incident}/response-actions` named `incidents.response-actions.store`
+- `PATCH /incidents/{incident}/response-actions/{responseAction}` named `incidents.response-actions.update`
+- `DELETE /incidents/{incident}/response-actions/{responseAction}` named `incidents.response-actions.destroy`
+
+Implemented UI and tests:
+
+- The incident show page includes a Response Actions panel visible to users with `response-action.view`.
+- Response Action create, edit, and delete controls are visible only to users with `response-action.manage`.
+- Response Action coverage includes `ResponseActionDataModelTest`, `ResponseActionAuthorizationTest`, `ResponseActionWorkflowTest`, and `ResponseActionUiTest`.
 
 ## 11. Audit Logs
 
