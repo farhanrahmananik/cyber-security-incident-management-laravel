@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLog\AuditLogController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Evidence\IncidentEvidenceController;
@@ -241,6 +242,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/security/export', [SecurityReportController::class, 'export'])
         ->middleware('permission:report.view')
         ->name('reports.security.export');
+
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])
+        ->middleware('permission:audit-log.view')
+        ->name('audit-logs.index');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
