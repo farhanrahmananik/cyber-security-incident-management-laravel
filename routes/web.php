@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Evidence\IncidentEvidenceController;
 use App\Http\Controllers\Incident\IncidentAssignmentController;
 use App\Http\Controllers\Incident\IncidentController;
 use App\Http\Controllers\IncidentSetup\IncidentCategoryController;
@@ -69,6 +70,22 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{incident}/iocs/{incidentIoc}', [IncidentIocController::class, 'destroy'])
                 ->middleware('permission:ioc.manage')
                 ->name('iocs.destroy');
+
+            Route::post('/{incident}/evidences', [IncidentEvidenceController::class, 'store'])
+                ->middleware('permission:evidence.manage')
+                ->name('evidences.store');
+
+            Route::patch('/{incident}/evidences/{incidentEvidence}', [IncidentEvidenceController::class, 'update'])
+                ->middleware('permission:evidence.manage')
+                ->name('evidences.update');
+
+            Route::delete('/{incident}/evidences/{incidentEvidence}', [IncidentEvidenceController::class, 'destroy'])
+                ->middleware('permission:evidence.manage')
+                ->name('evidences.destroy');
+
+            Route::get('/{incident}/evidences/{incidentEvidence}/download', [IncidentEvidenceController::class, 'download'])
+                ->middleware('permission:evidence.view')
+                ->name('evidences.download');
 
             Route::get('/{incident}', 'show')
                 ->middleware('permission:incident.view')

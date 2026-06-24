@@ -88,6 +88,14 @@ class Incident extends Model
     }
 
     /**
+     * Evidence records attached to this incident.
+     */
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(IncidentEvidence::class);
+    }
+
+    /**
      * Category assigned to the incident.
      */
     public function category(): BelongsTo
