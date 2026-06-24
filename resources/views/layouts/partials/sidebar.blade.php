@@ -64,20 +64,6 @@
         @endcan
     @endcanany
 
-    @can('evidence.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>Evidence</span>
-            <span class="planned-label">Planned</span>
-        </a>
-    @endcan
-
-    @can('response-action.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>Response Actions</span>
-            <span class="planned-label">Planned</span>
-        </a>
-    @endcan
-
     @can('report.view')
         <a class="sidebar-link planned" href="#" aria-disabled="true">
             <span>Reports</span>
