@@ -12,6 +12,11 @@ class IncidentEvidence extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * The table associated with the model.
+     */
+    protected $table = 'incident_evidences';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
