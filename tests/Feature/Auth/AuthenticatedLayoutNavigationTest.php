@@ -98,12 +98,12 @@ class AuthenticatedLayoutNavigationTest extends TestCase
 
         $this->assertStringNotContainsString('Investigation Notes', $sidebarContent);
         $this->assertStringNotContainsString('IOC Management', $sidebarContent);
+        $this->assertStringNotContainsString('Evidence', $sidebarContent);
+        $this->assertStringNotContainsString('Response Actions', $sidebarContent);
 
         $plannedModules = [
             'User Management',
             'Role &amp; Permission',
-            'Evidence',
-            'Response Actions',
             'Reports',
             'Audit Logs',
         ];
