@@ -23,9 +23,11 @@
     @endcan
 
     @can('role.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
+        <a
+            class="sidebar-link {{ request()->routeIs('roles.*') ? 'active' : '' }}"
+            href="{{ route('roles.index') }}"
+        >
             <span>Role &amp; Permission</span>
-            <span class="planned-label">Planned</span>
         </a>
     @endcan
 
