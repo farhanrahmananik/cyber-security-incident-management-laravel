@@ -28,10 +28,11 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $response->assertOk();
         $response->assertSee('Cyber Security Incident Management');
         $response->assertSee('Dashboard');
-        $response->assertSee('Authentication Ready');
-        $response->assertSee('RBAC Ready');
-        $response->assertSee('Authorization Middleware Ready');
-        $response->assertSee('Next Planned Module');
+        $response->assertSee('Dashboard metrics are calculated from real incident records');
+        $response->assertSee('Total Incidents');
+        $response->assertSee('Recent Incidents');
+        $response->assertSee('Incidents by Status');
+        $response->assertSee('data-dashboard-metric="total_incidents"', false);
     }
 
     public function test_sidebar_shows_dashboard_for_dashboard_view_permission(): void
@@ -87,8 +88,16 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $content = $response->getContent();
 
         $response->assertOk();
-        $response->assertDontSee('Investigation Notes');
-        $response->assertDontSee('IOC Management');
+        $this->assertMatchesRegularExpression(
+            '/<nav class="sidebar-nav" aria-label="Primary navigation">(.*?)<\/nav>/s',
+            $content,
+        );
+
+        preg_match('/<nav class="sidebar-nav" aria-label="Primary navigation">(.*?)<\/nav>/s', $content, $matches);
+        $sidebarContent = $matches[1];
+
+        $this->assertStringNotContainsString('Investigation Notes', $sidebarContent);
+        $this->assertStringNotContainsString('IOC Management', $sidebarContent);
 
         $plannedModules = [
             'User Management',
@@ -102,7 +111,7 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         foreach ($plannedModules as $plannedModule) {
             $this->assertMatchesRegularExpression(
                 sprintf('/<span>%s<\/span>\s*<span class="planned-label">Planned<\/span>/', preg_quote($plannedModule, '/')),
-                $content,
+                $sidebarContent,
             );
         }
     }
