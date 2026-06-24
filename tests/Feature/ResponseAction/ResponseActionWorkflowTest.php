@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\ResponseAction;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\Permission;
@@ -52,6 +53,7 @@ class ResponseActionWorkflowTest extends TestCase
         $this->assertDatabaseMissing('response_actions', [
             'title' => 'Reporter Response Attempt',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_create_response_action(): void
@@ -116,6 +118,7 @@ class ResponseActionWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors(['action_type', 'status', 'title']);
         $this->assertDatabaseCount('response_actions', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_for_invalid_action_type(): void
@@ -135,6 +138,7 @@ class ResponseActionWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('action_type');
         $this->assertDatabaseCount('response_actions', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_for_invalid_status(): void
@@ -154,6 +158,7 @@ class ResponseActionWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('status');
         $this->assertDatabaseCount('response_actions', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_when_completed_at_is_before_started_at(): void
@@ -174,6 +179,7 @@ class ResponseActionWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('completed_at');
         $this->assertDatabaseCount('response_actions', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_create_stores_incident_id_and_performed_by_correctly(): void
@@ -193,6 +199,41 @@ class ResponseActionWorkflowTest extends TestCase
 
         $this->assertSame($incident->id, $responseAction->incident_id);
         $this->assertSame($securityManager->id, $responseAction->performed_by);
+    }
+
+    public function test_creating_response_action_creates_response_action_created_audit_log_without_raw_description(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'response-action.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $description = 'Sensitive response action details that should not be dumped into audit values.';
+
+        $this->actingAs($securityManager)->post(
+            route('incidents.response-actions.store', $incident),
+            $this->validResponseActionPayload([
+                'title' => 'Isolate Affected Endpoint',
+                'description' => $description,
+            ]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $responseAction = ResponseAction::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('response_action.created', $responseAction);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_id' => $incident->id,
+            'action_type' => 'containment',
+            'status' => 'planned',
+            'title' => 'Isolate Affected Endpoint',
+            'performed_by' => $securityManager->id,
+            'started_at' => '2026-06-23 08:30:00',
+            'completed_at' => '2026-06-23 09:45:00',
+            'description_present' => true,
+            'description_length' => strlen($description),
+        ], $auditLog->new_values);
+        $this->assertStringNotContainsString($description, json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES));
     }
 
     public function test_create_stores_valid_response_action_details_correctly(): void
@@ -257,6 +298,45 @@ class ResponseActionWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_updating_response_action_creates_response_action_updated_audit_log_without_raw_description(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'response-action.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $originalDescription = 'Original sensitive response action details.';
+        $updatedDescription = 'Updated sensitive response action details.';
+        $responseAction = $this->createResponseAction($incident, $securityManager, $this->validResponseActionPayload([
+            'description' => $originalDescription,
+        ]));
+
+        $this->actingAs($securityManager)->patch(
+            route('incidents.response-actions.update', [$incident, $responseAction]),
+            $this->validResponseActionPayload([
+                'status' => 'in_progress',
+                'title' => 'Restore Clean Service State',
+                'description' => $updatedDescription,
+            ]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('response_action.updated', $responseAction);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame('planned', $auditLog->old_values['status']);
+        $this->assertSame('in_progress', $auditLog->new_values['status']);
+        $this->assertSame('Isolate Affected Endpoint', $auditLog->old_values['title']);
+        $this->assertSame('Restore Clean Service State', $auditLog->new_values['title']);
+        $this->assertFalse($auditLog->old_values['description_changed']);
+        $this->assertTrue($auditLog->new_values['description_changed']);
+        $this->assertSame(strlen($originalDescription), $auditLog->old_values['description_length']);
+        $this->assertSame(strlen($updatedDescription), $auditLog->new_values['description_length']);
+
+        $auditPayload = json_encode([$auditLog->old_values, $auditLog->new_values], JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($originalDescription, $auditPayload);
+        $this->assertStringNotContainsString($updatedDescription, $auditPayload);
+    }
+
     public function test_permitted_user_can_delete_response_action(): void
     {
         $reporter = User::factory()->create(['is_active' => true]);
@@ -275,6 +355,26 @@ class ResponseActionWorkflowTest extends TestCase
         $this->assertDatabaseMissing('response_actions', [
             'id' => $responseAction->id,
         ]);
+    }
+
+    public function test_deleting_response_action_creates_response_action_deleted_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'response-action.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $responseAction = $this->createResponseAction($incident, $securityManager);
+
+        $this->actingAs($securityManager)->delete(
+            route('incidents.response-actions.destroy', [$incident, $responseAction]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('response_action.deleted', $responseAction);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['deleted' => false], $auditLog->old_values);
+        $this->assertSame(['deleted' => true], $auditLog->new_values);
     }
 
     public function test_cannot_update_response_action_through_a_different_incident_route(): void
@@ -300,6 +400,7 @@ class ResponseActionWorkflowTest extends TestCase
             'incident_id' => $incident->id,
             'title' => 'Original Response Action',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_cannot_delete_response_action_through_a_different_incident_route(): void
@@ -320,6 +421,7 @@ class ResponseActionWorkflowTest extends TestCase
             'id' => $responseAction->id,
             'incident_id' => $incident->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -452,5 +554,15 @@ class ResponseActionWorkflowTest extends TestCase
             'started_at' => '2026-06-23 08:30:00',
             'completed_at' => '2026-06-23 09:45:00',
         ], $overrides);
+    }
+
+    private function latestAuditLogFor(string $event, ResponseAction $responseAction): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $responseAction->getMorphClass())
+            ->where('auditable_id', $responseAction->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }
