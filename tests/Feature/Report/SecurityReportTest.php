@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Report;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\Permission;
@@ -36,6 +37,57 @@ class SecurityReportTest extends TestCase
         $response->assertSee('Incidents by Status');
     }
 
+    public function test_viewing_security_reports_page_creates_security_report_viewed_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['report.view'], 'security-manager', 'Security Manager');
+        $reporter = User::factory()->create(['is_active' => true]);
+        $taxonomy = $this->createTaxonomy();
+        $incident = $this->createIncidentFor($reporter, [
+            'incident_number' => 'INC-20260624-5001',
+            'title' => 'Sensitive report visible incident',
+            'description' => 'Sensitive incident description should not enter report audit payloads.',
+            'status' => 'investigating',
+            'incident_category_id' => $taxonomy['category']->id,
+            'severity_level_id' => $taxonomy['severity']->id,
+            'priority_level_id' => $taxonomy['priority']->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('reports.security.index', [
+            'status' => 'investigating',
+            'severity_id' => $taxonomy['severity']->id,
+            'priority_id' => $taxonomy['priority']->id,
+            'category_id' => $taxonomy['category']->id,
+        ]));
+
+        $response->assertOk();
+
+        $auditLog = $this->latestAuditLogFor('security_report.viewed');
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertNull($auditLog->auditable_type);
+        $this->assertNull($auditLog->auditable_id);
+        $this->assertNull($auditLog->old_values);
+        $this->assertSame([
+            'filters' => [
+                'status' => 'investigating',
+                'severity_id' => (string) $taxonomy['severity']->id,
+                'priority_id' => (string) $taxonomy['priority']->id,
+                'category_id' => (string) $taxonomy['category']->id,
+            ],
+            'summary' => [
+                'total_incidents' => 1,
+                'open_incidents' => 1,
+                'closed_incidents' => 0,
+                'critical_incidents' => 1,
+            ],
+        ], $auditLog->new_values);
+
+        $auditPayload = json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($incident->incident_number, $auditPayload);
+        $this->assertStringNotContainsString($incident->title, $auditPayload);
+        $this->assertStringNotContainsString('Sensitive incident description should not enter report audit payloads.', $auditPayload);
+    }
+
     public function test_guest_is_redirected_to_login(): void
     {
         $response = $this->get(route('reports.security.index'));
@@ -65,6 +117,43 @@ class SecurityReportTest extends TestCase
         $this->assertStringContainsString($incident->title, $csv);
     }
 
+    public function test_exporting_security_reports_csv_creates_security_report_exported_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['report.view'], 'security-manager', 'Security Manager');
+        $reporter = User::factory()->create(['is_active' => true]);
+        $incident = $this->createIncidentFor($reporter, [
+            'incident_number' => 'INC-20260624-5002',
+            'title' => 'CSV audit excluded incident title',
+            'description' => 'CSV audit must not include this incident description.',
+            'status' => 'reported',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('reports.security.export', [
+            'status' => 'reported',
+        ]));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($incident->incident_number, $csv);
+
+        $auditLog = $this->latestAuditLogFor('security_report.exported');
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertNull($auditLog->auditable_type);
+        $this->assertNull($auditLog->auditable_id);
+        $this->assertNull($auditLog->old_values);
+        $this->assertSame('csv', $auditLog->new_values['export_type']);
+        $this->assertSame(['status' => 'reported'], $auditLog->new_values['filters']);
+        $this->assertArrayHasKey('exported_at', $auditLog->new_values);
+
+        $auditPayload = json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString('Incident Number', $auditPayload);
+        $this->assertStringNotContainsString('Assigned Analyst', $auditPayload);
+        $this->assertStringNotContainsString($incident->incident_number, $auditPayload);
+        $this->assertStringNotContainsString($incident->title, $auditPayload);
+        $this->assertStringNotContainsString('CSV audit must not include this incident description.', $auditPayload);
+    }
+
     public function test_guest_is_redirected_to_login_for_export(): void
     {
         $response = $this->get(route('reports.security.export'));
@@ -87,6 +176,7 @@ class SecurityReportTest extends TestCase
         $response = $this->actingAs($user)->get(route('reports.security.export'));
 
         $response->assertForbidden();
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_filters_are_accepted(): void
@@ -271,6 +361,7 @@ class SecurityReportTest extends TestCase
         $response = $this->actingAs($user)->get(route('reports.security.index'));
 
         $response->assertForbidden();
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_filtered_summary_count_and_recent_incidents_are_consistent(): void
@@ -313,6 +404,7 @@ class SecurityReportTest extends TestCase
 
         $response->assertRedirect(route('reports.security.index'));
         $response->assertSessionHasErrors('date_to');
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_page_displays_expected_summary_text(): void
@@ -348,6 +440,14 @@ class SecurityReportTest extends TestCase
         $this->assertStringContainsString('attachment;', (string) $response->headers->get('content-disposition'));
         $this->assertStringContainsString('security-reports-', (string) $response->headers->get('content-disposition'));
         $this->assertStringContainsString('.csv', (string) $response->headers->get('content-disposition'));
+    }
+
+    private function latestAuditLogFor(string $event): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 
     /**
