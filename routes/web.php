@@ -10,6 +10,7 @@ use App\Http\Controllers\IncidentSetup\PriorityLevelController;
 use App\Http\Controllers\IncidentSetup\SeverityLevelController;
 use App\Http\Controllers\Investigation\InvestigationNoteController;
 use App\Http\Controllers\Ioc\IncidentIocController;
+use App\Http\Controllers\Report\SecurityReportController;
 use App\Http\Controllers\ResponseAction\ResponseActionController;
 use Illuminate\Support\Facades\Route;
 
@@ -180,6 +181,14 @@ Route::middleware('auth')->group(function () {
                 ->middleware('permission:priority-level.manage')
                 ->name('destroy');
         });
+
+    Route::get('/reports/security', [SecurityReportController::class, 'index'])
+        ->middleware('permission:report.view')
+        ->name('reports.security.index');
+
+    Route::get('/reports/security/export', [SecurityReportController::class, 'export'])
+        ->middleware('permission:report.view')
+        ->name('reports.security.export');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

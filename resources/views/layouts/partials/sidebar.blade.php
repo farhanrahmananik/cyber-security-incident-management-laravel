@@ -65,9 +65,11 @@
     @endcanany
 
     @can('report.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
-            <span>Reports</span>
-            <span class="planned-label">Planned</span>
+        <a
+            class="sidebar-link {{ request()->routeIs('reports.*') ? 'active' : '' }}"
+            href="{{ route('reports.security.index') }}"
+        >
+            <span>Security Reports</span>
         </a>
     @endcan
 
