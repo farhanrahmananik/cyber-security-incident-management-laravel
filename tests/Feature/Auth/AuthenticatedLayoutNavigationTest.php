@@ -53,7 +53,7 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee('Reports');
+        $response->assertDontSee('Security Reports');
     }
 
     public function test_sidebar_shows_reports_with_report_view_permission(): void
@@ -66,8 +66,8 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Reports');
-        $response->assertSee('Planned');
+        $response->assertSee('Security Reports');
+        $response->assertSee('href="'.route('reports.security.index').'"', false);
     }
 
     public function test_sidebar_hides_embedded_modules_and_keeps_planned_badges_for_unimplemented_modules(): void
@@ -104,7 +104,6 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $plannedModules = [
             'User Management',
             'Role &amp; Permission',
-            'Reports',
             'Audit Logs',
         ];
 
