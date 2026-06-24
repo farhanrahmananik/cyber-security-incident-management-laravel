@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\IncidentSetup;
 
+use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\PriorityLevel;
 use App\Models\Role;
@@ -85,6 +86,32 @@ class PriorityLevelManagementTest extends TestCase
         ]);
     }
 
+    public function test_creating_priority_level_creates_priority_level_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['priority-level.manage']);
+
+        $this->actingAs($user)->post(route('priority-levels.store'), [
+            'name' => 'Immediate',
+            'description' => 'Response must begin immediately.',
+            'color' => '#842029',
+            'sort_order' => 50,
+            'is_active' => true,
+        ])->assertRedirect(route('priority-levels.index'));
+
+        $priorityLevel = PriorityLevel::query()->where('slug', 'immediate')->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('priority_level.created', $priorityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Immediate',
+            'slug' => 'immediate',
+            'description' => 'Response must begin immediately.',
+            'color' => '#842029',
+            'sort_order' => 50,
+            'is_active' => true,
+        ], $auditLog->new_values);
+    }
+
     public function test_user_with_manage_permission_can_update_priority_level(): void
     {
         $user = $this->createUserWithPermissions(['priority-level.manage']);
@@ -118,6 +145,45 @@ class PriorityLevelManagementTest extends TestCase
         ]);
     }
 
+    public function test_updating_priority_level_creates_priority_level_updated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['priority-level.manage']);
+        $priorityLevel = PriorityLevel::query()->create([
+            'name' => 'High',
+            'slug' => 'high',
+            'description' => 'Original description.',
+            'color' => '#fd7e14',
+            'sort_order' => 30,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->put(route('priority-levels.update', $priorityLevel), [
+            'name' => 'Escalated',
+            'description' => 'Updated description.',
+            'color' => '#dc3545',
+            'sort_order' => 35,
+            'is_active' => true,
+        ])->assertRedirect(route('priority-levels.index'));
+
+        $auditLog = $this->latestAuditLogFor('priority_level.updated', $priorityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'High',
+            'slug' => 'high',
+            'description' => 'Original description.',
+            'color' => '#fd7e14',
+            'sort_order' => 30,
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'name' => 'Escalated',
+            'slug' => 'escalated',
+            'description' => 'Updated description.',
+            'color' => '#dc3545',
+            'sort_order' => 35,
+        ], $auditLog->new_values);
+    }
+
     public function test_destroy_deactivates_priority_level_instead_of_hard_deleting_it(): void
     {
         $user = $this->createUserWithPermissions(['priority-level.manage']);
@@ -137,6 +203,26 @@ class PriorityLevelManagementTest extends TestCase
             'id' => $priorityLevel->id,
             'is_active' => false,
         ]);
+    }
+
+    public function test_deactivating_priority_level_creates_priority_level_deactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['priority-level.manage']);
+        $priorityLevel = PriorityLevel::query()->create([
+            'name' => 'Medium',
+            'slug' => 'medium',
+            'sort_order' => 20,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->delete(route('priority-levels.destroy', $priorityLevel))
+            ->assertRedirect(route('priority-levels.index'));
+
+        $auditLog = $this->latestAuditLogFor('priority_level.deactivated', $priorityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame(['is_active' => true], $auditLog->old_values);
+        $this->assertSame(['is_active' => false], $auditLog->new_values);
     }
 
     public function test_user_without_manage_permission_cannot_create_update_or_deactivate(): void
@@ -185,6 +271,8 @@ class PriorityLevelManagementTest extends TestCase
             'name' => 'Low',
             'is_active' => true,
         ]);
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -219,5 +307,15 @@ class PriorityLevelManagementTest extends TestCase
         $user->roles()->sync([$role->id]);
 
         return $user;
+    }
+
+    private function latestAuditLogFor(string $event, PriorityLevel $priorityLevel): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $priorityLevel->getMorphClass())
+            ->where('auditable_id', $priorityLevel->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

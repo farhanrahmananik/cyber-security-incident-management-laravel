@@ -3,10 +3,15 @@
 namespace App\Services\IncidentSetup;
 
 use App\Models\PriorityLevel;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Support\Str;
 
 class PriorityLevelService
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * Create a priority level with a stable unique slug.
      *
@@ -16,7 +21,16 @@ class PriorityLevelService
     {
         $data['slug'] = $this->uniqueSlug((string) $data['name']);
 
-        return PriorityLevel::query()->create($data);
+        $priorityLevel = PriorityLevel::query()->create($data);
+
+        $this->auditLogService->record(
+            event: 'priority_level.created',
+            auditable: $priorityLevel,
+            newValues: $this->safeValues($priorityLevel),
+            request: request(),
+        );
+
+        return $priorityLevel;
     }
 
     /**
@@ -26,11 +40,26 @@ class PriorityLevelService
      */
     public function update(PriorityLevel $priorityLevel, array $data): PriorityLevel
     {
+        $oldValues = $this->safeValues($priorityLevel);
+
         if (isset($data['name']) && $data['name'] !== $priorityLevel->name) {
             $data['slug'] = $this->uniqueSlug((string) $data['name'], $priorityLevel);
         }
 
         $priorityLevel->update($data);
+
+        $newValues = $this->safeValues($priorityLevel);
+        $changedValues = $this->changedValues($oldValues, $newValues);
+
+        if ($changedValues['old'] !== []) {
+            $this->auditLogService->record(
+                event: 'priority_level.updated',
+                auditable: $priorityLevel,
+                oldValues: $changedValues['old'],
+                newValues: $changedValues['new'],
+                request: request(),
+            );
+        }
 
         return $priorityLevel;
     }
@@ -40,7 +69,19 @@ class PriorityLevelService
      */
     public function deactivate(PriorityLevel $priorityLevel): void
     {
+        $wasActive = (bool) $priorityLevel->is_active;
+
         $priorityLevel->update(['is_active' => false]);
+
+        if ($wasActive === true) {
+            $this->auditLogService->record(
+                event: 'priority_level.deactivated',
+                auditable: $priorityLevel,
+                oldValues: ['is_active' => true],
+                newValues: ['is_active' => false],
+                request: request(),
+            );
+        }
     }
 
     /**
@@ -69,5 +110,46 @@ class PriorityLevelService
             ->where('slug', $slug)
             ->when($ignore, fn ($query) => $query->where('id', '!=', $ignore->getKey()))
             ->exists();
+    }
+
+    /**
+     * Return safe priority level fields for audit logging.
+     *
+     * @return array<string, mixed>
+     */
+    private function safeValues(PriorityLevel $priorityLevel): array
+    {
+        return [
+            'name' => $priorityLevel->name,
+            'slug' => $priorityLevel->slug,
+            'description' => $priorityLevel->description,
+            'color' => $priorityLevel->color,
+            'sort_order' => (int) $priorityLevel->sort_order,
+            'is_active' => (bool) $priorityLevel->is_active,
+        ];
+    }
+
+    /**
+     * Extract changed audit values from two safe snapshots.
+     *
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}
+     */
+    private function changedValues(array $oldValues, array $newValues): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($newValues as $key => $value) {
+            if (($oldValues[$key] ?? null) === $value) {
+                continue;
+            }
+
+            $old[$key] = $oldValues[$key] ?? null;
+            $new[$key] = $value;
+        }
+
+        return ['old' => $old, 'new' => $new];
     }
 }

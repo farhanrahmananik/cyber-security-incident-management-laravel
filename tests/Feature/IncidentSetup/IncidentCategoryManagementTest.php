@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\IncidentSetup;
 
+use App\Models\AuditLog;
 use App\Models\IncidentCategory;
 use App\Models\Permission;
 use App\Models\Role;
@@ -85,6 +86,32 @@ class IncidentCategoryManagementTest extends TestCase
         ]);
     }
 
+    public function test_creating_category_creates_incident_category_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['incident-category.manage']);
+
+        $this->actingAs($user)->post(route('incident-categories.store'), [
+            'name' => 'Social Engineering',
+            'description' => 'Human-focused security incidents.',
+            'color' => '#6610f2',
+            'sort_order' => 70,
+            'is_active' => true,
+        ])->assertRedirect(route('incident-categories.index'));
+
+        $incidentCategory = IncidentCategory::query()->where('slug', 'social-engineering')->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident_category.created', $incidentCategory);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Social Engineering',
+            'slug' => 'social-engineering',
+            'description' => 'Human-focused security incidents.',
+            'color' => '#6610f2',
+            'sort_order' => 70,
+            'is_active' => true,
+        ], $auditLog->new_values);
+    }
+
     public function test_user_with_manage_permission_can_update_category(): void
     {
         $user = $this->createUserWithPermissions(['incident-category.manage']);
@@ -118,6 +145,45 @@ class IncidentCategoryManagementTest extends TestCase
         ]);
     }
 
+    public function test_updating_category_creates_incident_category_updated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['incident-category.manage']);
+        $incidentCategory = IncidentCategory::query()->create([
+            'name' => 'Phishing',
+            'slug' => 'phishing',
+            'description' => 'Original description.',
+            'color' => '#fd7e14',
+            'sort_order' => 20,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->put(route('incident-categories.update', $incidentCategory), [
+            'name' => 'Phishing Simulation',
+            'description' => 'Updated description.',
+            'color' => '#0dcaf0',
+            'sort_order' => 25,
+            'is_active' => true,
+        ])->assertRedirect(route('incident-categories.index'));
+
+        $auditLog = $this->latestAuditLogFor('incident_category.updated', $incidentCategory);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Phishing',
+            'slug' => 'phishing',
+            'description' => 'Original description.',
+            'color' => '#fd7e14',
+            'sort_order' => 20,
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'name' => 'Phishing Simulation',
+            'slug' => 'phishing-simulation',
+            'description' => 'Updated description.',
+            'color' => '#0dcaf0',
+            'sort_order' => 25,
+        ], $auditLog->new_values);
+    }
+
     public function test_destroy_deactivates_category_instead_of_hard_deleting_it(): void
     {
         $user = $this->createUserWithPermissions(['incident-category.manage']);
@@ -137,6 +203,26 @@ class IncidentCategoryManagementTest extends TestCase
             'id' => $incidentCategory->id,
             'is_active' => false,
         ]);
+    }
+
+    public function test_deactivating_category_creates_incident_category_deactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['incident-category.manage']);
+        $incidentCategory = IncidentCategory::query()->create([
+            'name' => 'Policy Violation',
+            'slug' => 'policy-violation',
+            'sort_order' => 60,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->delete(route('incident-categories.destroy', $incidentCategory))
+            ->assertRedirect(route('incident-categories.index'));
+
+        $auditLog = $this->latestAuditLogFor('incident_category.deactivated', $incidentCategory);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame(['is_active' => true], $auditLog->old_values);
+        $this->assertSame(['is_active' => false], $auditLog->new_values);
     }
 
     public function test_user_without_manage_permission_cannot_create_update_or_deactivate(): void
@@ -185,6 +271,8 @@ class IncidentCategoryManagementTest extends TestCase
             'name' => 'Network Attack',
             'is_active' => true,
         ]);
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -219,5 +307,15 @@ class IncidentCategoryManagementTest extends TestCase
         $user->roles()->sync([$role->id]);
 
         return $user;
+    }
+
+    private function latestAuditLogFor(string $event, IncidentCategory $incidentCategory): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $incidentCategory->getMorphClass())
+            ->where('auditable_id', $incidentCategory->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }
