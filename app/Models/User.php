@@ -108,6 +108,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Evidence records uploaded by this user.
+     */
+    public function uploadedEvidences(): HasMany
+    {
+        return $this->hasMany(IncidentEvidence::class, 'uploaded_by_id');
+    }
+
+    /**
+     * Evidence records deleted by this user.
+     */
+    public function deletedEvidences(): HasMany
+    {
+        return $this->hasMany(IncidentEvidence::class, 'deleted_by_id');
+    }
+
+    /**
      * Determine if the user has an active role.
      */
     public function hasRole(string $roleSlug): bool
