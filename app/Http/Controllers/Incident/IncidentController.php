@@ -11,6 +11,7 @@ use App\Models\PriorityLevel;
 use App\Models\SeverityLevel;
 use App\Services\Incident\IncidentAssignmentService;
 use App\Services\Incident\IncidentService;
+use App\Services\Incident\IncidentStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -55,6 +56,7 @@ class IncidentController extends Controller
         Incident $incident,
         IncidentService $incidentService,
         IncidentAssignmentService $assignmentService,
+        IncidentStatusService $statusService,
     ): View {
         $user = $request->user();
 
@@ -71,6 +73,9 @@ class IncidentController extends Controller
             'severity',
             'priority',
             'currentAssignee',
+            'statusTransitions' => fn ($query) => $query
+                ->with('changedBy')
+                ->latest(),
             'assignments' => fn ($query) => $query
                 ->with(['assignedTo', 'assignedBy'])
                 ->latest('assigned_at'),
@@ -105,6 +110,8 @@ class IncidentController extends Controller
         return view('incidents.show', [
             'incident' => $incident,
             'assignmentHistory' => $incident->assignments,
+            'availableStatusTransitions' => $statusService->availableTransitions($incident, $user),
+            'statusTransitions' => $incident->statusTransitions,
             'assignableUsers' => $user->can('incident.assign')
                 ? $assignmentService->assignableUsers()
                 : collect(),

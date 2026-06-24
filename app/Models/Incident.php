@@ -72,6 +72,14 @@ class Incident extends Model
     }
 
     /**
+     * Status transition history for this incident.
+     */
+    public function statusTransitions(): HasMany
+    {
+        return $this->hasMany(IncidentStatusTransition::class)->latest();
+    }
+
+    /**
      * Investigation notes recorded for this incident.
      */
     public function investigationNotes(): HasMany
