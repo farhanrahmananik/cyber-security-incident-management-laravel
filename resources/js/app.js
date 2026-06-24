@@ -9,3 +9,5 @@ window.bootstrap = bootstrap;
 window.$ = window.jQuery = $;
 window.DataTable = DataTable;
 window.Swal = Swal;
+
+document.documentElement.setAttribute('data-bs-theme', 'dark');
