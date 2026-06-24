@@ -30,6 +30,25 @@
             'medium' => 'Medium',
             'high' => 'High',
         ];
+
+        $formatEvidenceFileSize = static function (?int $bytes): string {
+            $bytes ??= 0;
+
+            if ($bytes < 1024) {
+                return $bytes.' B';
+            }
+
+            $units = ['KB', 'MB', 'GB', 'TB'];
+            $value = $bytes / 1024;
+            $unitIndex = 0;
+
+            while ($value >= 1024 && $unitIndex < count($units) - 1) {
+                $value /= 1024;
+                $unitIndex++;
+            }
+
+            return rtrim(rtrim(number_format($value, 1), '0'), '.').' '.$units[$unitIndex];
+        };
     @endphp
 
     <div class="row g-4">
@@ -625,6 +644,212 @@
 
                                     <button type="submit" class="btn btn-primary">
                                         Add IOC
+                                    </button>
+                                </form>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+        @endcan
+
+        @can('evidence.view')
+            <div class="col-12">
+                <div class="bg-white border rounded-2 p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                        <div class="flex-fill">
+                            <h2 class="h5 mb-1">Evidence / Attachments</h2>
+                            <p class="text-secondary mb-4">
+                                Store incident-related files privately with metadata and SHA-256 integrity tracking.
+                            </p>
+
+                            @forelse ($evidences as $incidentEvidence)
+                                <div class="border rounded-2 p-3 mb-3">
+                                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+                                        <div class="flex-fill">
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                                <h3 class="h6 mb-0">{{ $incidentEvidence->title }}</h3>
+                                                <span class="badge text-bg-secondary">
+                                                    {{ $incidentEvidence->mime_type ?: 'Unknown' }}
+                                                </span>
+                                                <span class="badge text-bg-light">
+                                                    {{ $formatEvidenceFileSize($incidentEvidence->file_size) }}
+                                                </span>
+                                            </div>
+
+                                            @if ($incidentEvidence->description)
+                                                <p class="mb-3" style="white-space: pre-line;">{{ $incidentEvidence->description }}</p>
+                                            @endif
+
+                                            <div class="row g-2 text-secondary small mb-3">
+                                                <div class="col-md-6">
+                                                    Original filename:
+                                                    <span class="text-body text-break">
+                                                        {{ $incidentEvidence->original_filename }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Uploaded by:
+                                                    <span class="text-body">
+                                                        {{ $incidentEvidence->uploadedBy?->name ?? 'Unknown' }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Uploaded at:
+                                                    <span class="text-body">
+                                                        {{ $incidentEvidence->created_at?->format('Y-m-d H:i') }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    Integrity:
+                                                    <span class="text-body">
+                                                        SHA-256
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <code class="d-block text-break small mb-3">
+                                                {{ $incidentEvidence->checksum_sha256 ?: 'Checksum not available' }}
+                                            </code>
+
+                                            <a
+                                                href="{{ route('incidents.evidences.download', [$incident, $incidentEvidence]) }}"
+                                                class="btn btn-outline-secondary btn-sm"
+                                            >
+                                                Download
+                                            </a>
+                                        </div>
+
+                                        @can('evidence.manage')
+                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                                <details>
+                                                    <summary class="btn btn-outline-primary btn-sm">
+                                                        Edit
+                                                    </summary>
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('incidents.evidences.update', [$incident, $incidentEvidence]) }}"
+                                                        class="mt-3 border rounded-2 p-3"
+                                                        style="min-width: min(100%, 420px);"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+
+                                                        <div class="mb-3">
+                                                            <label for="evidence_title_{{ $incidentEvidence->id }}" class="form-label">Title</label>
+                                                            <input
+                                                                id="evidence_title_{{ $incidentEvidence->id }}"
+                                                                type="text"
+                                                                name="title"
+                                                                class="form-control @error('title') is-invalid @enderror"
+                                                                value="{{ old('title', $incidentEvidence->title) }}"
+                                                                maxlength="255"
+                                                                required
+                                                            >
+                                                            @error('title')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="evidence_description_{{ $incidentEvidence->id }}" class="form-label">Description</label>
+                                                            <textarea
+                                                                id="evidence_description_{{ $incidentEvidence->id }}"
+                                                                name="description"
+                                                                class="form-control @error('description') is-invalid @enderror"
+                                                                rows="3"
+                                                                maxlength="5000"
+                                                            >{{ old('description', $incidentEvidence->description) }}</textarea>
+                                                            @error('description')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+
+                                                        <button type="submit" class="btn btn-primary btn-sm">
+                                                            Update
+                                                        </button>
+                                                    </form>
+                                                </details>
+
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('incidents.evidences.destroy', [$incident, $incidentEvidence]) }}"
+                                                    onsubmit="return confirm('Delete this evidence attachment?');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endcan
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="border rounded-2 p-3 text-secondary">
+                                    No evidence attachments have been recorded yet.
+                                </div>
+                            @endforelse
+                        </div>
+
+                        @can('evidence.manage')
+                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                                <h3 class="h6 mb-3">Upload Evidence</h3>
+
+                                <form
+                                    method="POST"
+                                    action="{{ route('incidents.evidences.store', $incident) }}"
+                                    enctype="multipart/form-data"
+                                >
+                                    @csrf
+
+                                    <div class="mb-3">
+                                        <label for="evidence_title" class="form-label">Title</label>
+                                        <input
+                                            id="evidence_title"
+                                            type="text"
+                                            name="title"
+                                            class="form-control @error('title') is-invalid @enderror"
+                                            value="{{ old('title') }}"
+                                            maxlength="255"
+                                            required
+                                        >
+                                        @error('title')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="evidence_description" class="form-label">Description</label>
+                                        <textarea
+                                            id="evidence_description"
+                                            name="description"
+                                            class="form-control @error('description') is-invalid @enderror"
+                                            rows="3"
+                                            maxlength="5000"
+                                        >{{ old('description') }}</textarea>
+                                        @error('description')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="evidence_file" class="form-label">Evidence File</label>
+                                        <input
+                                            id="evidence_file"
+                                            type="file"
+                                            name="evidence_file"
+                                            class="form-control @error('evidence_file') is-invalid @enderror"
+                                            required
+                                        >
+                                        @error('evidence_file')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        Upload Evidence
                                     </button>
                                 </form>
                             </div>
