@@ -2,7 +2,7 @@
 
 This ERD supports a production-style Cyber Security Incident Management Platform built with Laravel 12, MySQL, Bootstrap 5, jQuery, DataTables, and SweetAlert2. It reflects the existing database design, migration plan, and schema blueprint documents for the project.
 
-The diagram keeps planned table names aligned with the current blueprint. IOC tracking is represented by `incident_iocs`, and evidence attachment tracking is represented by `incident_evidences`.
+The diagram keeps planned table names aligned with the current blueprint. IOC tracking is represented by `incident_iocs`, evidence attachment tracking is represented by `incident_evidences`, and response action tracking is represented by `response_actions`.
 
 ## Core ERD
 
@@ -237,11 +237,13 @@ erDiagram
     response_actions {
         BIGINT id PK
         BIGINT incident_id FK
+        BIGINT performed_by FK
         STRING action_type
-        LONGTEXT description
-        BIGINT performed_by_id FK
-        DATETIME performed_at
-        TEXT outcome
+        STRING status
+        STRING title
+        TEXT description
+        DATETIME started_at
+        DATETIME completed_at
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
@@ -316,7 +318,7 @@ erDiagram
 - `investigation_notes` records analyst timeline entries for an incident.
 - `incident_iocs` records indicators of compromise such as IP addresses, domains, URLs, file hashes, email addresses, malware filenames, process names, registry keys, and other observables.
 - `incident_evidences` stores evidence attachment metadata while files remain in Laravel storage.
-- `response_actions` records containment, eradication, recovery, and communication actions.
+- `response_actions` records containment, eradication, recovery, communication, monitoring, lessons learned, and other response work. `action_type` and `status` are stored as strings and constrained by application validation.
 - `audit_logs` can optionally reference a user, allowing system actions to be logged while keeping polymorphic-style auditable fields free of strict foreign keys.
 - `security_reports` stores generated report metadata, including JSON filters and optional exported file paths.
 - Laravel default tables such as `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, and `failed_jobs` remain framework-managed support tables.
@@ -330,7 +332,7 @@ erDiagram
 - Investigation notes are stored in `investigation_notes` so SOC analysts can maintain a clear incident timeline.
 - IOC tracking is handled through `incident_iocs`, allowing analysts to record observable indicators connected to an incident. In the Laravel implementation, these records map to `Incident::iocs()`, `IncidentIoc::incident()`, `IncidentIoc::createdBy()`, and `User::createdIocs()`.
 - Evidence tracking is handled through `incident_evidences`, which stores metadata, file paths, file sizes, MIME types, and checksums while files live in Laravel storage.
-- Response actions are recorded in `response_actions` to show what containment, remediation, or communication steps were performed.
+- Response actions are recorded in `response_actions` to show what containment, eradication, recovery, communication, monitoring, or lessons learned work was planned or performed. In the Laravel implementation, these records map to `Incident::responseActions()`, `ResponseAction::incident()`, `ResponseAction::performedBy()`, and `User::performedResponseActions()`.
 - Audit logging is handled through `audit_logs`, preserving user-driven and system-driven security events for accountability.
 - Security reporting is handled through `security_reports`, allowing generated reports to reference report type, filters, generated file paths, and generating users.
 
@@ -338,6 +340,6 @@ erDiagram
 
 - This ERD demonstrates production-minded database planning for a security-focused Laravel application.
 - It shows clear separation between framework-managed Laravel tables and custom incident management domain tables.
-- It documents many-to-many role and permission modeling, incident lifecycle tracking, analyst workflow history, evidence metadata, IOC management, audit logging, and reporting.
+- It documents many-to-many role and permission modeling, incident lifecycle tracking, analyst workflow history, evidence metadata, IOC management, response action tracking, audit logging, and reporting.
 - It supports future migration work by making primary keys, foreign keys, business fields, nullable references, and relationships easy to review before implementation.
 - It reinforces conservative data retention decisions that are appropriate for cyber security incident management systems.

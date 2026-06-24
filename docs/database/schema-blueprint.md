@@ -424,25 +424,34 @@ Evidence metadata should be preserved. Files should be stored in Laravel storage
 
 - `id` big integer primary key
 - `incident_id` foreign id
+- `performed_by` nullable foreign id
 - `action_type` string
-- `description` longText
-- `performed_by_id` foreign id
-- `performed_at` datetime
-- `outcome` text nullable
+- `status` string default planned
+- `title` string
+- `description` text nullable
+- `started_at` timestamp nullable
+- `completed_at` timestamp nullable
 - `created_at` timestamp nullable
 - `updated_at` timestamp nullable
 
 ### Constraints
 
 - `incident_id` references `incidents`
-- `performed_by_id` references `users`
+- `performed_by` references `users`
 
 ### Indexes
 
 - Index on `incident_id`
 - Index on `action_type`
-- Index on `performed_by_id`
-- Index on `performed_at`
+- Index on `status`
+- Index on `performed_by`
+
+### Implementation Notes
+
+- `action_type` and `status` are strings rather than database enums so workflow options can evolve without database-specific enum changes.
+- Allowed `action_type` values are validated at the application layer: `containment`, `eradication`, `recovery`, `communication`, `monitoring`, `lessons_learned`, and `other`.
+- Allowed `status` values are validated at the application layer: `planned`, `in_progress`, `completed`, and `cancelled`.
+- Eloquent relationships are `Incident::responseActions()`, `ResponseAction::incident()`, `ResponseAction::performedBy()`, and `User::performedResponseActions()`.
 
 ## 18. audit_logs Table Blueprint
 
