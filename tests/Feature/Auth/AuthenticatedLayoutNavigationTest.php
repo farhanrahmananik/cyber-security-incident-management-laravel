@@ -100,9 +100,10 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $this->assertStringNotContainsString('IOC Management', $sidebarContent);
         $this->assertStringNotContainsString('Evidence', $sidebarContent);
         $this->assertStringNotContainsString('Response Actions', $sidebarContent);
+        $this->assertStringContainsString('User Management', $sidebarContent);
+        $this->assertStringContainsString('href="'.route('users.index').'"', $sidebarContent);
 
         $plannedModules = [
-            'User Management',
             'Role &amp; Permission',
             'Audit Logs',
         ];

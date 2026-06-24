@@ -14,9 +14,11 @@
     @endcan
 
     @can('user.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
+        <a
+            class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}"
+            href="{{ route('users.index') }}"
+        >
             <span>User Management</span>
-            <span class="planned-label">Planned</span>
         </a>
     @endcan
 

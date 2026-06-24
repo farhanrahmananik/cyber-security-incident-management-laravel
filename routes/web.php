@@ -12,6 +12,7 @@ use App\Http\Controllers\Investigation\InvestigationNoteController;
 use App\Http\Controllers\Ioc\IncidentIocController;
 use App\Http\Controllers\Report\SecurityReportController;
 use App\Http\Controllers\ResponseAction\ResponseActionController;
+use App\Http\Controllers\UserManagement\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,6 +30,31 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    Route::prefix('users')
+        ->name('users.')
+        ->controller(UserController::class)
+        ->group(function () {
+            Route::get('/', 'index')
+                ->middleware('permission:user.view')
+                ->name('index');
+
+            Route::post('/', 'store')
+                ->middleware('permission:user.create')
+                ->name('store');
+
+            Route::patch('/{user}', 'update')
+                ->middleware('permission:user.update')
+                ->name('update');
+
+            Route::patch('/{user}/activate', 'activate')
+                ->middleware('permission:user.update')
+                ->name('activate');
+
+            Route::patch('/{user}/deactivate', 'deactivate')
+                ->middleware('permission:user.delete')
+                ->name('deactivate');
+        });
 
     Route::prefix('incidents')
         ->name('incidents.')
