@@ -125,6 +125,8 @@ class AuthenticationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Welcome, SOC Analyst');
-        $response->assertSee('temporary authenticated landing page');
+        $response->assertSee('Dashboard metrics are calculated from real incident records');
+        $response->assertSee('Total Incidents');
+        $response->assertSee('data-dashboard-metric="total_incidents"', false);
     }
 }

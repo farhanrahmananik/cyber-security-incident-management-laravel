@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Evidence\IncidentEvidenceController;
 use App\Http\Controllers\Incident\IncidentAssignmentController;
 use App\Http\Controllers\Incident\IncidentController;
@@ -24,9 +25,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard.index');
-    })->middleware('permission:dashboard.view')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view')
+        ->name('dashboard');
 
     Route::prefix('incidents')
         ->name('incidents.')
