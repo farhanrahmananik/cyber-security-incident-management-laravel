@@ -5,12 +5,17 @@ namespace App\Services\Incident;
 use App\Models\Incident;
 use App\Models\IncidentAssignment;
 use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class IncidentAssignmentService
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * Get users eligible to receive incident assignments.
      *
@@ -39,7 +44,9 @@ class IncidentAssignmentService
     ): IncidentAssignment {
         $this->validateAssignee($incident, $assignedTo);
 
-        return DB::transaction(function () use ($incident, $assignedTo, $assignedBy, $notes): IncidentAssignment {
+        $previousAssigneeId = $incident->current_assigned_to_id;
+
+        $assignment = DB::transaction(function () use ($incident, $assignedTo, $assignedBy, $notes): IncidentAssignment {
             $incident->update([
                 'current_assigned_to_id' => $assignedTo->getKey(),
             ]);
@@ -52,6 +59,20 @@ class IncidentAssignmentService
                 'assigned_at' => now(),
             ]);
         });
+
+        $this->auditLogService->record(
+            event: $previousAssigneeId === null ? 'incident.assigned' : 'incident.reassigned',
+            auditable: $incident->refresh(),
+            oldValues: ['previous_assignee_id' => $previousAssigneeId],
+            newValues: [
+                'assigned_to_id' => $assignedTo->getKey(),
+                'assigned_by_id' => $assignedBy->getKey(),
+                'assignment_id' => $assignment->getKey(),
+            ],
+            request: request(),
+        );
+
+        return $assignment;
     }
 
     /**

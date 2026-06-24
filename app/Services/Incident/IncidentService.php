@@ -4,12 +4,17 @@ namespace App\Services\Incident;
 
 use App\Models\Incident;
 use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class IncidentService
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * Get incidents visible to the given user.
      *
@@ -31,13 +36,22 @@ class IncidentService
      */
     public function create(User $reporter, array $data): Incident
     {
-        return DB::transaction(function () use ($reporter, $data): Incident {
+        $incident = DB::transaction(function () use ($reporter, $data): Incident {
             $data['incident_number'] = $this->generateIncidentNumber();
             $data['reporter_id'] = $reporter->getKey();
             $data['status'] = 'reported';
 
             return Incident::query()->create($data);
         });
+
+        $this->auditLogService->record(
+            event: 'incident.created',
+            auditable: $incident,
+            newValues: $this->safeIncidentValues($incident),
+            request: request(),
+        );
+
+        return $incident;
     }
 
     /**
@@ -47,6 +61,10 @@ class IncidentService
      */
     public function update(Incident $incident, array $data): Incident
     {
+        $oldValues = $this->safeIncidentValues($incident);
+        $oldDescription = $incident->description;
+        $oldImpactSummary = $incident->impact_summary;
+
         $incident->update(Arr::only($data, [
             'incident_category_id',
             'severity_level_id',
@@ -59,6 +77,29 @@ class IncidentService
             'detected_at',
         ]));
 
+        $newValues = $this->safeIncidentValues($incident);
+        $changedValues = $this->changedValues($oldValues, $newValues);
+
+        if ($oldDescription !== $incident->description) {
+            $changedValues['old']['description_changed'] = false;
+            $changedValues['new']['description_changed'] = true;
+        }
+
+        if ($oldImpactSummary !== $incident->impact_summary) {
+            $changedValues['old']['impact_summary_changed'] = false;
+            $changedValues['new']['impact_summary_changed'] = true;
+        }
+
+        if ($changedValues['old'] !== []) {
+            $this->auditLogService->record(
+                event: 'incident.updated',
+                auditable: $incident,
+                oldValues: $changedValues['old'],
+                newValues: $changedValues['new'],
+                request: request(),
+            );
+        }
+
         return $incident;
     }
 
@@ -67,7 +108,17 @@ class IncidentService
      */
     public function delete(Incident $incident): void
     {
+        $oldDeletedAt = $incident->deleted_at?->format('Y-m-d H:i:s');
+
         $incident->delete();
+
+        $this->auditLogService->record(
+            event: 'incident.deleted',
+            auditable: $incident,
+            oldValues: ['deleted_at' => $oldDeletedAt],
+            newValues: ['deleted_at' => $incident->deleted_at?->format('Y-m-d H:i:s')],
+            request: request(),
+        );
     }
 
     /**
@@ -129,5 +180,50 @@ class IncidentService
         );
 
         return $incidentNumber;
+    }
+
+    /**
+     * Return compact incident fields safe for audit logging.
+     *
+     * @return array<string, mixed>
+     */
+    private function safeIncidentValues(Incident $incident): array
+    {
+        return [
+            'incident_number' => $incident->incident_number,
+            'title' => $incident->title,
+            'incident_category_id' => $incident->incident_category_id,
+            'severity_level_id' => $incident->severity_level_id,
+            'priority_level_id' => $incident->priority_level_id,
+            'reporter_id' => $incident->reporter_id,
+            'status' => $incident->status,
+            'affected_system' => $incident->affected_system,
+            'occurred_at' => $incident->occurred_at?->format('Y-m-d H:i:s'),
+            'detected_at' => $incident->detected_at?->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * Extract changed audit values from two safe snapshots.
+     *
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}
+     */
+    private function changedValues(array $oldValues, array $newValues): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($newValues as $key => $value) {
+            if (($oldValues[$key] ?? null) === $value) {
+                continue;
+            }
+
+            $old[$key] = $oldValues[$key] ?? null;
+            $new[$key] = $value;
+        }
+
+        return ['old' => $old, 'new' => $new];
     }
 }
