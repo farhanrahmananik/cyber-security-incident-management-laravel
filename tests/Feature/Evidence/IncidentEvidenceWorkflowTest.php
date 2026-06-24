@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Evidence;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\IncidentEvidence;
@@ -52,6 +53,7 @@ class IncidentEvidenceWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_evidences', [
             'title' => 'Reporter Upload Attempt',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_upload_evidence(): void
@@ -109,6 +111,7 @@ class IncidentEvidenceWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('title');
         $this->assertDatabaseCount('incident_evidences', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_when_evidence_file_is_missing(): void
@@ -125,6 +128,7 @@ class IncidentEvidenceWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('evidence_file');
         $this->assertDatabaseCount('incident_evidences', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_upload_stores_incident_id_and_uploaded_by_id_correctly(): void
@@ -175,6 +179,36 @@ class IncidentEvidenceWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($evidence->stored_path);
     }
 
+    public function test_uploading_evidence_creates_incident_evidence_uploaded_audit_log_without_storage_path(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'evidence.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+
+        $this->actingAs($securityManager)->post(route('incidents.evidences.store', $incident), $this->validUploadPayload([
+            'title' => 'Firewall Log Export',
+            'description' => 'Sensitive evidence description.',
+        ]))->assertRedirect(route('incidents.show', $incident));
+
+        $evidence = IncidentEvidence::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident_evidence.uploaded', $evidence);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_id' => $incident->id,
+            'title' => 'Firewall Log Export',
+            'mime_type' => 'text/csv',
+            'file_size' => $evidence->file_size,
+            'checksum_sha256' => $evidence->checksum_sha256,
+            'uploaded_by_id' => $securityManager->id,
+        ], $auditLog->new_values);
+        $this->assertArrayNotHasKey('stored_path', $auditLog->new_values);
+        $this->assertArrayNotHasKey('disk', $auditLog->new_values);
+        $this->assertStringNotContainsString('Sensitive evidence description.', json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES));
+    }
+
     public function test_permitted_user_can_update_title_and_description(): void
     {
         $reporter = User::factory()->create(['is_active' => true]);
@@ -201,6 +235,45 @@ class IncidentEvidenceWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_updating_evidence_metadata_creates_incident_evidence_updated_audit_log_without_storage_path(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'evidence.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $evidence = $this->createIncidentEvidence($incident, $securityManager, [
+            'title' => 'Firewall Log Export',
+            'description' => 'Original sensitive evidence description.',
+        ]);
+
+        $this->actingAs($securityManager)->patch(
+            route('incidents.evidences.update', [$incident, $evidence]),
+            [
+                'title' => 'Updated Firewall Log Export',
+                'description' => 'Updated sensitive evidence description.',
+            ],
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident_evidence.updated', $evidence);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'title' => 'Firewall Log Export',
+            'description_changed' => false,
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'title' => 'Updated Firewall Log Export',
+            'description_changed' => true,
+        ], $auditLog->new_values);
+        $this->assertArrayNotHasKey('stored_path', $auditLog->old_values);
+        $this->assertArrayNotHasKey('stored_path', $auditLog->new_values);
+
+        $auditPayload = json_encode([$auditLog->old_values, $auditLog->new_values], JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString('Original sensitive evidence description.', $auditPayload);
+        $this->assertStringNotContainsString('Updated sensitive evidence description.', $auditPayload);
+    }
+
     public function test_permitted_user_can_soft_delete_evidence_and_deleted_by_id_is_stored(): void
     {
         $reporter = User::factory()->create(['is_active' => true]);
@@ -225,6 +298,33 @@ class IncidentEvidenceWorkflowTest extends TestCase
             'deleted_by_id' => $securityManager->id,
         ]);
         Storage::disk('local')->assertExists($evidence->stored_path);
+    }
+
+    public function test_deleting_evidence_creates_incident_evidence_deleted_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'evidence.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $evidence = $this->createIncidentEvidence($incident, $securityManager, [
+            'stored_path' => 'incidents/'.$incident->id.'/evidences/firewall-log-export.csv',
+        ]);
+        Storage::disk('local')->put($evidence->stored_path, 'stored evidence content');
+
+        $this->actingAs($securityManager)
+            ->delete(route('incidents.evidences.destroy', [$incident, $evidence]))
+            ->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident_evidence.deleted', $evidence);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'deleted_at' => null,
+            'deleted_by_id' => null,
+        ], $auditLog->old_values);
+        $this->assertSame($securityManager->id, $auditLog->new_values['deleted_by_id']);
+        $this->assertNotNull($auditLog->new_values['deleted_at']);
     }
 
     public function test_cannot_update_delete_or_download_evidence_through_a_different_incident_route(): void
@@ -263,6 +363,7 @@ class IncidentEvidenceWorkflowTest extends TestCase
             'title' => 'Firewall Log Export',
             'deleted_at' => null,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_permitted_user_can_download_evidence(): void
@@ -282,6 +383,14 @@ class IncidentEvidenceWorkflowTest extends TestCase
 
         $response->assertOk();
         $response->assertDownload('firewall-log-export.csv');
+
+        $auditLog = $this->latestAuditLogFor('incident_evidence.downloaded', $evidence);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_id' => $incident->id,
+            'downloaded_by_id' => $securityManager->id,
+        ], $auditLog->new_values);
     }
 
     public function test_download_returns_not_found_when_physical_file_is_missing(): void
@@ -298,6 +407,8 @@ class IncidentEvidenceWorkflowTest extends TestCase
         $this->actingAs($securityManager)
             ->get(route('incidents.evidences.download', [$incident, $evidence]))
             ->assertNotFound();
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -424,5 +535,15 @@ class IncidentEvidenceWorkflowTest extends TestCase
             'description' => 'Network firewall logs exported for incident triage.',
             'evidence_file' => UploadedFile::fake()->create('firewall-log-export.csv', 12, 'text/csv'),
         ], $overrides);
+    }
+
+    private function latestAuditLogFor(string $event, IncidentEvidence $incidentEvidence): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $incidentEvidence->getMorphClass())
+            ->where('auditable_id', $incidentEvidence->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

@@ -74,8 +74,12 @@ class IncidentEvidenceController extends Controller
     /**
      * Download a stored private evidence file.
      */
-    public function download(Incident $incident, IncidentEvidence $incidentEvidence): StreamedResponse
-    {
+    public function download(
+        Request $request,
+        Incident $incident,
+        IncidentEvidence $incidentEvidence,
+        IncidentEvidenceService $service,
+    ): StreamedResponse {
         Gate::authorize('evidence.view');
         $this->ensureEvidenceBelongsToIncident($incident, $incidentEvidence);
 
@@ -83,6 +87,8 @@ class IncidentEvidenceController extends Controller
             Storage::disk($incidentEvidence->disk)->exists($incidentEvidence->stored_path),
             404,
         );
+
+        $service->recordDownload($incidentEvidence, $request->user());
 
         return Storage::disk($incidentEvidence->disk)
             ->download($incidentEvidence->stored_path, $incidentEvidence->original_filename);

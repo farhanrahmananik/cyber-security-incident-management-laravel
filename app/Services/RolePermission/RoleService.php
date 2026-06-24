@@ -4,6 +4,7 @@ namespace App\Services\RolePermission;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -13,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class RoleService
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * Return roles with permission relationships and user counts.
      */
@@ -46,7 +51,7 @@ class RoleService
      */
     public function createRole(array $data): Role
     {
-        return DB::transaction(function () use ($data): Role {
+        $role = DB::transaction(function () use ($data): Role {
             $slug = $this->uniqueSlugFromData($data);
 
             $this->ensureSlugIsNotReservedForCreate($slug);
@@ -61,6 +66,17 @@ class RoleService
 
             return $role->load('permissions');
         });
+
+        $this->auditLogService->record(
+            event: 'role.created',
+            auditable: $role,
+            newValues: $this->safeRoleValues($role) + [
+                'permission_slugs' => $this->permissionSlugsForRole($role),
+            ],
+            request: request(),
+        );
+
+        return $role;
     }
 
     /**
@@ -70,7 +86,10 @@ class RoleService
      */
     public function updateRole(Role $role, array $data): Role
     {
-        return DB::transaction(function () use ($role, $data): Role {
+        $oldRoleValues = $this->safeRoleValues($role);
+        $oldPermissionSlugs = $this->permissionSlugsForRole($role);
+
+        $updatedRole = DB::transaction(function () use ($role, $data): Role {
             $slug = $this->uniqueSlugFromData($data, $role);
 
             $this->ensureSuperAdminSlugIsNotChanged($role, $slug);
@@ -84,6 +103,33 @@ class RoleService
 
             return $role->load('permissions');
         });
+
+        $newRoleValues = $this->safeRoleValues($updatedRole);
+        $changedRoleValues = $this->changedValues($oldRoleValues, $newRoleValues);
+
+        if ($changedRoleValues['old'] !== []) {
+            $this->auditLogService->record(
+                event: 'role.updated',
+                auditable: $updatedRole,
+                oldValues: $changedRoleValues['old'],
+                newValues: $changedRoleValues['new'],
+                request: request(),
+            );
+        }
+
+        $newPermissionSlugs = $this->permissionSlugsForRole($updatedRole);
+
+        if ($oldPermissionSlugs !== $newPermissionSlugs) {
+            $this->auditLogService->record(
+                event: 'role.permissions_synced',
+                auditable: $updatedRole,
+                oldValues: ['permission_slugs' => $oldPermissionSlugs],
+                newValues: ['permission_slugs' => $newPermissionSlugs],
+                request: request(),
+            );
+        }
+
+        return $updatedRole;
     }
 
     /**
@@ -91,9 +137,21 @@ class RoleService
      */
     public function activate(Role $role): void
     {
+        $wasActive = (bool) $role->is_active;
+
         DB::transaction(function () use ($role): void {
             $role->update(['is_active' => true]);
         });
+
+        if ($wasActive === false) {
+            $this->auditLogService->record(
+                event: 'role.reactivated',
+                auditable: $role->refresh(),
+                oldValues: ['is_active' => false],
+                newValues: ['is_active' => true],
+                request: request(),
+            );
+        }
     }
 
     /**
@@ -103,9 +161,21 @@ class RoleService
     {
         $this->ensureRoleCanBeDeactivated($role);
 
+        $wasActive = (bool) $role->is_active;
+
         DB::transaction(function () use ($role): void {
             $role->update(['is_active' => false]);
         });
+
+        if ($wasActive === true) {
+            $this->auditLogService->record(
+                event: 'role.deactivated',
+                auditable: $role->refresh(),
+                oldValues: ['is_active' => true],
+                newValues: ['is_active' => false],
+                request: request(),
+            );
+        }
     }
 
     /**
@@ -214,5 +284,58 @@ class RoleService
         }
 
         return $activePermissionIds->all();
+    }
+
+    /**
+     * Return safe role fields for audit logging.
+     *
+     * @return array<string, mixed>
+     */
+    private function safeRoleValues(Role $role): array
+    {
+        return [
+            'name' => $role->name,
+            'slug' => $role->slug,
+            'description' => $role->description,
+            'is_active' => (bool) $role->is_active,
+        ];
+    }
+
+    /**
+     * Return sorted permission slugs for audit logging.
+     *
+     * @return list<string>
+     */
+    private function permissionSlugsForRole(Role $role): array
+    {
+        return $role->permissions()
+            ->orderBy('slug')
+            ->pluck('slug')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Extract changed audit values from two safe snapshots.
+     *
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}
+     */
+    private function changedValues(array $oldValues, array $newValues): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($newValues as $key => $value) {
+            if (($oldValues[$key] ?? null) === $value) {
+                continue;
+            }
+
+            $old[$key] = $oldValues[$key] ?? null;
+            $new[$key] = $value;
+        }
+
+        return ['old' => $old, 'new' => $new];
     }
 }

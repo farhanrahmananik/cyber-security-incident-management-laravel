@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Incident;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentAssignment;
 use App\Models\IncidentCategory;
@@ -54,6 +55,7 @@ class IncidentAssignmentWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_assignments', [
             'incident_id' => $incident->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_assign_incident_to_active_soc_analyst(): void
@@ -86,6 +88,66 @@ class IncidentAssignmentWorkflowTest extends TestCase
 
         $assignment = IncidentAssignment::query()->firstOrFail();
         $this->assertTrue($assignment->assigned_at->isSameMinute(now()));
+    }
+
+    public function test_first_assignment_creates_incident_assigned_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', ['incident.assign']);
+        $analyst = $this->createUserWithRoleAndPermissions('soc-analyst');
+        $incident = $this->createIncidentFor($reporter);
+
+        $this->actingAs($securityManager)->post(route('incidents.assign', $incident), [
+            'assigned_to_id' => $analyst->id,
+            'notes' => 'Assigning for initial triage.',
+        ])->assertRedirect(route('incidents.show', $incident));
+
+        $assignment = IncidentAssignment::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident.assigned', $incident);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['previous_assignee_id' => null], $auditLog->old_values);
+        $this->assertSame([
+            'assigned_to_id' => $analyst->id,
+            'assigned_by_id' => $securityManager->id,
+            'assignment_id' => $assignment->id,
+        ], $auditLog->new_values);
+    }
+
+    public function test_reassignment_creates_incident_reassigned_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', ['incident.assign']);
+        $firstAnalyst = $this->createUserWithRoleAndPermissions('soc-analyst');
+        $secondAnalyst = $this->createUserWithRoleAndPermissions('soc-analyst');
+        $incident = $this->createIncidentFor($reporter, [
+            'current_assigned_to_id' => $firstAnalyst->id,
+        ]);
+        IncidentAssignment::query()->create([
+            'incident_id' => $incident->id,
+            'assigned_to_id' => $firstAnalyst->id,
+            'assigned_by_id' => $securityManager->id,
+            'notes' => 'Existing assignment.',
+            'assigned_at' => CarbonImmutable::parse('2026-06-23 09:00:00'),
+        ]);
+
+        $this->actingAs($securityManager)->post(route('incidents.assign', $incident), [
+            'assigned_to_id' => $secondAnalyst->id,
+            'notes' => 'Reassigning for deeper analysis.',
+        ])->assertRedirect(route('incidents.show', $incident));
+
+        $assignment = IncidentAssignment::query()
+            ->where('assigned_to_id', $secondAnalyst->id)
+            ->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident.reassigned', $incident);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['previous_assignee_id' => $firstAnalyst->id], $auditLog->old_values);
+        $this->assertSame([
+            'assigned_to_id' => $secondAnalyst->id,
+            'assigned_by_id' => $securityManager->id,
+            'assignment_id' => $assignment->id,
+        ], $auditLog->new_values);
     }
 
     public function test_assignment_updates_current_assignee_and_creates_history_record(): void
@@ -127,6 +189,7 @@ class IncidentAssignmentWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_assignments', [
             'incident_id' => $incident->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_reporter_employee_cannot_assign_incident(): void
@@ -142,6 +205,7 @@ class IncidentAssignmentWorkflowTest extends TestCase
 
         $response->assertForbidden();
         $this->assertNull($incident->refresh()->current_assigned_to_id);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_user_with_incident_assign_cannot_assign_incident_to_normal_reporter_employee(): void
@@ -159,6 +223,7 @@ class IncidentAssignmentWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_assignments', [
             'incident_id' => $incident->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_assigning_same_current_assignee_returns_validation_error_without_duplicate_history(): void
@@ -187,6 +252,7 @@ class IncidentAssignmentWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_assignments', [
             'notes' => 'Duplicate assignment attempt.',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -281,5 +347,15 @@ class IncidentAssignmentWorkflowTest extends TestCase
             'description' => 'Endpoint protection detected suspicious behavior.',
             'status' => 'reported',
         ], $overrides));
+    }
+
+    private function latestAuditLogFor(string $event, Incident $incident): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $incident->getMorphClass())
+            ->where('auditable_id', $incident->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Investigation;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\InvestigationNote;
@@ -51,6 +52,7 @@ class InvestigationNoteWorkflowTest extends TestCase
         $this->assertDatabaseMissing('investigation_notes', [
             'note' => 'Reporter should not be able to add investigation notes.',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_create_investigation_note(): void
@@ -106,6 +108,7 @@ class InvestigationNoteWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('note');
         $this->assertDatabaseCount('investigation_notes', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_create_stores_incident_id_and_author_id_correctly(): void
@@ -124,6 +127,32 @@ class InvestigationNoteWorkflowTest extends TestCase
 
         $this->assertSame($incident->id, $note->incident_id);
         $this->assertSame($securityManager->id, $note->author_id);
+    }
+
+    public function test_creating_note_creates_investigation_note_created_audit_log_without_raw_body(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'investigation-note.create',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $noteBody = 'Sensitive SOC investigation detail for audit redaction.';
+
+        $this->actingAs($securityManager)->post(route('incidents.investigation-notes.store', $incident), [
+            'note' => $noteBody,
+        ])->assertRedirect(route('incidents.show', $incident));
+
+        $note = InvestigationNote::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('investigation_note.created', $note);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_id' => $incident->id,
+            'author_id' => $securityManager->id,
+            'body_present' => true,
+            'body_length' => strlen($noteBody),
+        ], $auditLog->new_values);
+        $this->assertStringNotContainsString($noteBody, json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES));
     }
 
     public function test_permitted_user_can_update_investigation_note(): void
@@ -150,6 +179,41 @@ class InvestigationNoteWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_updating_note_creates_investigation_note_updated_audit_log_without_raw_body(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'investigation-note.update',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $originalBody = 'Original sensitive investigation note body.';
+        $updatedBody = 'Updated sensitive investigation note body with containment details.';
+        $note = $this->createInvestigationNote($incident, $securityManager, [
+            'note' => $originalBody,
+        ]);
+
+        $this->actingAs($securityManager)->patch(
+            route('incidents.investigation-notes.update', [$incident, $note]),
+            ['note' => $updatedBody],
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('investigation_note.updated', $note);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'body_changed' => false,
+            'body_length' => strlen($originalBody),
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'body_changed' => true,
+            'body_length' => strlen($updatedBody),
+        ], $auditLog->new_values);
+
+        $auditPayload = json_encode([$auditLog->old_values, $auditLog->new_values], JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($originalBody, $auditPayload);
+        $this->assertStringNotContainsString($updatedBody, $auditPayload);
+    }
+
     public function test_permitted_user_can_delete_investigation_note(): void
     {
         $reporter = User::factory()->create(['is_active' => true]);
@@ -170,6 +234,26 @@ class InvestigationNoteWorkflowTest extends TestCase
         $this->assertDatabaseMissing('investigation_notes', [
             'id' => $note->id,
         ]);
+    }
+
+    public function test_deleting_note_creates_investigation_note_deleted_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'investigation-note.delete',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $note = $this->createInvestigationNote($incident, $securityManager);
+
+        $this->actingAs($securityManager)->delete(
+            route('incidents.investigation-notes.destroy', [$incident, $note]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('investigation_note.deleted', $note);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['deleted' => false], $auditLog->old_values);
+        $this->assertSame(['deleted' => true], $auditLog->new_values);
     }
 
     public function test_cannot_update_or_delete_note_through_different_incident_route(): void
@@ -204,6 +288,7 @@ class InvestigationNoteWorkflowTest extends TestCase
         $this->assertDatabaseHas('investigation_notes', [
             'id' => $note->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -316,5 +401,15 @@ class InvestigationNoteWorkflowTest extends TestCase
             'author_id' => $author->id,
             'note' => 'Initial investigation note.',
         ], $overrides));
+    }
+
+    private function latestAuditLogFor(string $event, InvestigationNote $note): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $note->getMorphClass())
+            ->where('auditable_id', $note->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

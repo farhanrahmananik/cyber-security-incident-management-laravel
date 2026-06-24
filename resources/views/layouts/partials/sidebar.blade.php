@@ -78,9 +78,11 @@
     @endcan
 
     @can('audit-log.view')
-        <a class="sidebar-link planned" href="#" aria-disabled="true">
+        <a
+            class="sidebar-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}"
+            href="{{ route('audit-logs.index') }}"
+        >
             <span>Audit Logs</span>
-            <span class="planned-label">Planned</span>
         </a>
     @endcan
 </nav>

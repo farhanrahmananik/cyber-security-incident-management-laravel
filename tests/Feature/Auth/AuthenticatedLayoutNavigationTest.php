@@ -70,7 +70,7 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $response->assertSee('href="'.route('reports.security.index').'"', false);
     }
 
-    public function test_sidebar_hides_embedded_modules_and_keeps_planned_badges_for_unimplemented_modules(): void
+    public function test_sidebar_hides_embedded_modules_and_links_implemented_navigation_items(): void
     {
         $user = $this->createUserWithPermissions([
             'audit-log.view',
@@ -104,17 +104,9 @@ class AuthenticatedLayoutNavigationTest extends TestCase
         $this->assertStringContainsString('href="'.route('users.index').'"', $sidebarContent);
         $this->assertStringContainsString('Role &amp; Permission', $sidebarContent);
         $this->assertStringContainsString('href="'.route('roles.index').'"', $sidebarContent);
-
-        $plannedModules = [
-            'Audit Logs',
-        ];
-
-        foreach ($plannedModules as $plannedModule) {
-            $this->assertMatchesRegularExpression(
-                sprintf('/<span>%s<\/span>\s*<span class="planned-label">Planned<\/span>/', preg_quote($plannedModule, '/')),
-                $sidebarContent,
-            );
-        }
+        $this->assertStringContainsString('Audit Logs', $sidebarContent);
+        $this->assertStringContainsString('href="'.route('audit-logs.index').'"', $sidebarContent);
+        $this->assertStringNotContainsString('planned-label">Planned', $sidebarContent);
     }
 
     public function test_topbar_shows_authenticated_user_name_email_and_roles(): void

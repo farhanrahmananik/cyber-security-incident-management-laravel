@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\IncidentSetup;
 
+use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\SeverityLevel;
@@ -85,6 +86,32 @@ class SeverityLevelManagementTest extends TestCase
         ]);
     }
 
+    public function test_creating_severity_level_creates_severity_level_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['severity-level.manage']);
+
+        $this->actingAs($user)->post(route('severity-levels.store'), [
+            'name' => 'Emergency',
+            'description' => 'Immediate executive visibility required.',
+            'color' => '#842029',
+            'sort_order' => 50,
+            'is_active' => true,
+        ])->assertRedirect(route('severity-levels.index'));
+
+        $severityLevel = SeverityLevel::query()->where('slug', 'emergency')->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('severity_level.created', $severityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Emergency',
+            'slug' => 'emergency',
+            'description' => 'Immediate executive visibility required.',
+            'color' => '#842029',
+            'sort_order' => 50,
+            'is_active' => true,
+        ], $auditLog->new_values);
+    }
+
     public function test_user_with_manage_permission_can_update_severity_level(): void
     {
         $user = $this->createUserWithPermissions(['severity-level.manage']);
@@ -118,6 +145,45 @@ class SeverityLevelManagementTest extends TestCase
         ]);
     }
 
+    public function test_updating_severity_level_creates_severity_level_updated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['severity-level.manage']);
+        $severityLevel = SeverityLevel::query()->create([
+            'name' => 'High',
+            'slug' => 'high',
+            'description' => 'Original description.',
+            'color' => '#dc3545',
+            'sort_order' => 30,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->put(route('severity-levels.update', $severityLevel), [
+            'name' => 'Major',
+            'description' => 'Updated description.',
+            'color' => '#fd7e14',
+            'sort_order' => 35,
+            'is_active' => true,
+        ])->assertRedirect(route('severity-levels.index'));
+
+        $auditLog = $this->latestAuditLogFor('severity_level.updated', $severityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'High',
+            'slug' => 'high',
+            'description' => 'Original description.',
+            'color' => '#dc3545',
+            'sort_order' => 30,
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'name' => 'Major',
+            'slug' => 'major',
+            'description' => 'Updated description.',
+            'color' => '#fd7e14',
+            'sort_order' => 35,
+        ], $auditLog->new_values);
+    }
+
     public function test_destroy_deactivates_severity_level_instead_of_hard_deleting_it(): void
     {
         $user = $this->createUserWithPermissions(['severity-level.manage']);
@@ -137,6 +203,26 @@ class SeverityLevelManagementTest extends TestCase
             'id' => $severityLevel->id,
             'is_active' => false,
         ]);
+    }
+
+    public function test_deactivating_severity_level_creates_severity_level_deactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['severity-level.manage']);
+        $severityLevel = SeverityLevel::query()->create([
+            'name' => 'Medium',
+            'slug' => 'medium',
+            'sort_order' => 20,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->delete(route('severity-levels.destroy', $severityLevel))
+            ->assertRedirect(route('severity-levels.index'));
+
+        $auditLog = $this->latestAuditLogFor('severity_level.deactivated', $severityLevel);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame(['is_active' => true], $auditLog->old_values);
+        $this->assertSame(['is_active' => false], $auditLog->new_values);
     }
 
     public function test_user_without_manage_permission_cannot_create_update_or_deactivate(): void
@@ -185,6 +271,8 @@ class SeverityLevelManagementTest extends TestCase
             'name' => 'Low',
             'is_active' => true,
         ]);
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     /**
@@ -219,5 +307,15 @@ class SeverityLevelManagementTest extends TestCase
         $user->roles()->sync([$role->id]);
 
         return $user;
+    }
+
+    private function latestAuditLogFor(string $event, SeverityLevel $severityLevel): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $severityLevel->getMorphClass())
+            ->where('auditable_id', $severityLevel->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

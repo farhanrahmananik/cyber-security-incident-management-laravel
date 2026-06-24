@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Incident;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\Permission;
@@ -52,6 +53,33 @@ class IncidentReportingTest extends TestCase
         ]);
     }
 
+    public function test_creating_incident_creates_incident_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['incident.create', 'incident.view']);
+        $taxonomy = $this->createTaxonomy();
+
+        $this->actingAs($user)->post(route('incidents.store'), $this->incidentPayload($taxonomy))
+            ->assertRedirect();
+
+        $incident = Incident::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident.created', $incident);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_number' => $incident->incident_number,
+            'title' => 'Suspicious email reported',
+            'incident_category_id' => $taxonomy['category']->id,
+            'severity_level_id' => $taxonomy['severity']->id,
+            'priority_level_id' => $taxonomy['priority']->id,
+            'reporter_id' => $user->id,
+            'status' => 'reported',
+            'affected_system' => 'Corporate Email',
+            'occurred_at' => '2026-06-23 09:00:00',
+            'detected_at' => '2026-06-23 09:30:00',
+        ], $auditLog->new_values);
+        $this->assertArrayNotHasKey('description', $auditLog->new_values);
+    }
+
     public function test_incident_number_is_generated(): void
     {
         $user = $this->createUserWithPermissions(['incident.create', 'incident.view']);
@@ -77,6 +105,7 @@ class IncidentReportingTest extends TestCase
             'severity_level_id',
             'priority_level_id',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_reporter_can_view_own_incident(): void
@@ -126,6 +155,70 @@ class IncidentReportingTest extends TestCase
         ]);
     }
 
+    public function test_updating_safe_incident_fields_creates_incident_updated_audit_log(): void
+    {
+        $reporter = $this->createUserWithPermissions(
+            ['incident.view', 'incident.update'],
+            'reporter-employee',
+            'Reporter / Employee',
+        );
+        $incident = $this->createIncidentFor($reporter, [
+            'title' => 'Original endpoint alert',
+            'affected_system' => 'Original endpoint',
+        ]);
+
+        $this->actingAs($reporter)->put(
+            route('incidents.update', $incident),
+            $this->incidentUpdatePayload($incident, [
+                'title' => 'Updated endpoint malware alert',
+                'affected_system' => 'Updated workstation',
+            ]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident.updated', $incident);
+
+        $this->assertSame($reporter->id, $auditLog->user_id);
+        $this->assertSame([
+            'title' => 'Original endpoint alert',
+            'affected_system' => 'Original endpoint',
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'title' => 'Updated endpoint malware alert',
+            'affected_system' => 'Updated workstation',
+        ], $auditLog->new_values);
+    }
+
+    public function test_updating_description_does_not_dump_raw_long_description_in_audit_values(): void
+    {
+        $reporter = $this->createUserWithPermissions(
+            ['incident.view', 'incident.update'],
+            'reporter-employee',
+            'Reporter / Employee',
+        );
+        $incident = $this->createIncidentFor($reporter, [
+            'description' => 'Original compact description.',
+        ]);
+        $longDescription = str_repeat('Sensitive incident narrative ', 50);
+
+        $this->actingAs($reporter)->put(
+            route('incidents.update', $incident),
+            $this->incidentUpdatePayload($incident, [
+                'description' => $longDescription,
+            ]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident.updated', $incident);
+        $encodedValues = json_encode([
+            'old' => $auditLog->old_values,
+            'new' => $auditLog->new_values,
+        ]);
+
+        $this->assertSame(['description_changed' => false], $auditLog->old_values);
+        $this->assertSame(['description_changed' => true], $auditLog->new_values);
+        $this->assertStringNotContainsString($longDescription, (string) $encodedValues);
+        $this->assertStringNotContainsString('Original compact description.', (string) $encodedValues);
+    }
+
     public function test_reporter_cannot_update_own_incident_after_reported_status(): void
     {
         $reporter = $this->createUserWithPermissions(
@@ -148,6 +241,7 @@ class IncidentReportingTest extends TestCase
             'title' => 'Endpoint malware alert',
             'status' => 'triaged',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_reporter_cannot_delete_own_incident_even_with_delete_permission(): void
@@ -166,6 +260,7 @@ class IncidentReportingTest extends TestCase
             'id' => $incident->id,
             'deleted_at' => null,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_soc_analyst_can_view_incident_list(): void
@@ -197,6 +292,7 @@ class IncidentReportingTest extends TestCase
             'id' => $incident->id,
             'deleted_at' => null,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_delete_incident_when_rbac_allows_it(): void
@@ -215,6 +311,26 @@ class IncidentReportingTest extends TestCase
         $this->assertSoftDeleted('incidents', [
             'id' => $incident->id,
         ]);
+    }
+
+    public function test_deleting_incident_creates_incident_deleted_audit_log(): void
+    {
+        $reporter = $this->createUserWithPermissions(['incident.view'], 'reporter-employee', 'Reporter / Employee');
+        $incident = $this->createIncidentFor($reporter);
+        $securityManager = $this->createUserWithPermissions(
+            ['incident.view', 'incident.delete'],
+            'security-manager',
+            'Security Manager',
+        );
+
+        $this->actingAs($securityManager)->delete(route('incidents.destroy', $incident))
+            ->assertRedirect(route('incidents.index'));
+
+        $auditLog = $this->latestAuditLogFor('incident.deleted', $incident);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['deleted_at' => null], $auditLog->old_values);
+        $this->assertNotNull($auditLog->new_values['deleted_at'] ?? null);
     }
 
     public function test_permitted_operational_roles_can_view_incident_list(): void
@@ -363,5 +479,15 @@ class IncidentReportingTest extends TestCase
             'description' => 'Endpoint protection detected suspicious behavior.',
             'status' => 'reported',
         ], $overrides));
+    }
+
+    private function latestAuditLogFor(string $event, Incident $incident): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $incident->getMorphClass())
+            ->where('auditable_id', $incident->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

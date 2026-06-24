@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Ioc;
 
+use App\Models\AuditLog;
 use App\Models\Incident;
 use App\Models\IncidentCategory;
 use App\Models\IncidentIoc;
@@ -49,6 +50,7 @@ class IncidentIocWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_iocs', [
             'value' => '198.51.100.10',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_security_manager_can_create_ioc(): void
@@ -107,6 +109,7 @@ class IncidentIocWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors(['type', 'value']);
         $this->assertDatabaseCount('incident_iocs', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_for_invalid_ioc_type(): void
@@ -123,6 +126,7 @@ class IncidentIocWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('type');
         $this->assertDatabaseCount('incident_iocs', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_validation_fails_when_last_seen_at_is_before_first_seen_at(): void
@@ -140,6 +144,7 @@ class IncidentIocWorkflowTest extends TestCase
 
         $response->assertSessionHasErrors('last_seen_at');
         $this->assertDatabaseCount('incident_iocs', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_create_stores_incident_id_and_created_by_id_correctly(): void
@@ -156,6 +161,45 @@ class IncidentIocWorkflowTest extends TestCase
 
         $this->assertSame($incident->id, $ioc->incident_id);
         $this->assertSame($securityManager->id, $ioc->created_by_id);
+    }
+
+    public function test_creating_ioc_creates_incident_ioc_created_audit_log_without_raw_value(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'ioc.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $iocValue = 'https://malicious.example/sensitive-path';
+        $description = 'Sensitive IOC context that should not be dumped into audit values.';
+
+        $this->actingAs($securityManager)->post(route('incidents.iocs.store', $incident), $this->validIocPayload([
+            'type' => 'url',
+            'value' => $iocValue,
+            'description' => $description,
+            'confidence' => 'high',
+        ]))->assertRedirect(route('incidents.show', $incident));
+
+        $ioc = IncidentIoc::query()->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('incident_ioc.created', $ioc);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame([
+            'incident_id' => $incident->id,
+            'type' => 'url',
+            'confidence' => 'high',
+            'first_seen_at' => '2026-06-22 08:30:00',
+            'last_seen_at' => '2026-06-23 09:45:00',
+            'created_by_id' => $securityManager->id,
+            'value_present' => true,
+            'value_hash' => hash('sha256', $iocValue),
+            'description_present' => true,
+            'description_length' => strlen($description),
+        ], $auditLog->new_values);
+
+        $auditPayload = json_encode($auditLog->new_values, JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($iocValue, $auditPayload);
+        $this->assertStringNotContainsString($description, $auditPayload);
     }
 
     public function test_create_stores_valid_ioc_details_correctly(): void
@@ -215,6 +259,48 @@ class IncidentIocWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_updating_ioc_creates_incident_ioc_updated_audit_log_without_raw_values(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'ioc.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $originalValue = '192.0.2.10';
+        $updatedValue = 'https://malicious.example/payload';
+        $originalDescription = 'Original sensitive IOC context.';
+        $updatedDescription = 'Updated sensitive IOC context.';
+        $ioc = $this->createIncidentIoc($incident, $securityManager, $this->validIocPayload([
+            'value' => $originalValue,
+            'description' => $originalDescription,
+        ]));
+
+        $this->actingAs($securityManager)->patch(
+            route('incidents.iocs.update', [$incident, $ioc]),
+            $this->validIocPayload([
+                'type' => 'url',
+                'value' => $updatedValue,
+                'description' => $updatedDescription,
+            ]),
+        )->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident_ioc.updated', $ioc);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(hash('sha256', $originalValue), $auditLog->old_values['value_hash']);
+        $this->assertSame(hash('sha256', $updatedValue), $auditLog->new_values['value_hash']);
+        $this->assertFalse($auditLog->old_values['value_changed']);
+        $this->assertTrue($auditLog->new_values['value_changed']);
+        $this->assertSame(strlen($originalDescription), $auditLog->old_values['description_length']);
+        $this->assertSame(strlen($updatedDescription), $auditLog->new_values['description_length']);
+
+        $auditPayload = json_encode([$auditLog->old_values, $auditLog->new_values], JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($originalValue, $auditPayload);
+        $this->assertStringNotContainsString($updatedValue, $auditPayload);
+        $this->assertStringNotContainsString($originalDescription, $auditPayload);
+        $this->assertStringNotContainsString($updatedDescription, $auditPayload);
+    }
+
     public function test_permitted_user_can_delete_ioc(): void
     {
         $reporter = User::factory()->create(['is_active' => true]);
@@ -231,6 +317,26 @@ class IncidentIocWorkflowTest extends TestCase
         $this->assertDatabaseMissing('incident_iocs', [
             'id' => $ioc->id,
         ]);
+    }
+
+    public function test_deleting_ioc_creates_incident_ioc_deleted_audit_log(): void
+    {
+        $reporter = User::factory()->create(['is_active' => true]);
+        $securityManager = $this->createUserWithRoleAndPermissions('security-manager', [
+            'ioc.manage',
+        ]);
+        $incident = $this->createIncidentFor($reporter);
+        $ioc = $this->createIncidentIoc($incident, $securityManager);
+
+        $this->actingAs($securityManager)
+            ->delete(route('incidents.iocs.destroy', [$incident, $ioc]))
+            ->assertRedirect(route('incidents.show', $incident));
+
+        $auditLog = $this->latestAuditLogFor('incident_ioc.deleted', $ioc);
+
+        $this->assertSame($securityManager->id, $auditLog->user_id);
+        $this->assertSame(['deleted' => false], $auditLog->old_values);
+        $this->assertSame(['deleted' => true], $auditLog->new_values);
     }
 
     public function test_cannot_update_ioc_through_different_incident_route(): void
@@ -256,6 +362,7 @@ class IncidentIocWorkflowTest extends TestCase
             'incident_id' => $incident->id,
             'value' => '192.0.2.10',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_cannot_delete_ioc_through_different_incident_route(): void
@@ -276,6 +383,7 @@ class IncidentIocWorkflowTest extends TestCase
             'id' => $ioc->id,
             'incident_id' => $incident->id,
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_ioc_value_supports_long_url_style_value_up_to_2048_characters_through_request_validation(): void
@@ -429,5 +537,15 @@ class IncidentIocWorkflowTest extends TestCase
             'first_seen_at' => '2026-06-22 08:30:00',
             'last_seen_at' => '2026-06-23 09:45:00',
         ], $overrides);
+    }
+
+    private function latestAuditLogFor(string $event, IncidentIoc $incidentIoc): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $incidentIoc->getMorphClass())
+            ->where('auditable_id', $incidentIoc->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }
