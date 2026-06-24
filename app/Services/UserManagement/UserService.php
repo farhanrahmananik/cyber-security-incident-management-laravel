@@ -4,6 +4,7 @@ namespace App\Services\UserManagement;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -12,6 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class UserService
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * Return users with their assigned roles for the management page.
      */
@@ -42,7 +47,7 @@ class UserService
      */
     public function createUser(array $data): User
     {
-        return DB::transaction(function () use ($data): User {
+        $user = DB::transaction(function () use ($data): User {
             $roleIds = $this->roleIdsFromData($data);
             $userData = Arr::only($data, ['name', 'email', 'password', 'is_active']);
             $userData['is_active'] = (bool) ($userData['is_active'] ?? true);
@@ -52,6 +57,17 @@ class UserService
 
             return $user->load('roles');
         });
+
+        $this->auditLogService->record(
+            event: 'user.created',
+            auditable: $user,
+            newValues: $this->safeUserValues($user) + [
+                'role_slugs' => $this->roleSlugsForUser($user),
+            ],
+            request: request(),
+        );
+
+        return $user;
     }
 
     /**
@@ -61,7 +77,11 @@ class UserService
      */
     public function updateUser(User $user, array $data): User
     {
-        return DB::transaction(function () use ($user, $data): User {
+        $oldUserValues = $this->safeUserValues($user);
+        $oldRoleSlugs = $this->roleSlugsForUser($user);
+        $passwordWasProvided = filled($data['password'] ?? null);
+
+        $updatedUser = DB::transaction(function () use ($user, $data): User {
             $roleIds = $this->roleIdsFromData($data);
 
             $this->ensureLastActiveSuperAdminRoleIsNotRemoved($user, $roleIds);
@@ -77,6 +97,33 @@ class UserService
 
             return $user->load('roles');
         });
+
+        $newUserValues = $this->safeUserValues($updatedUser);
+        $changedUserValues = $this->changedValues($oldUserValues, $newUserValues);
+
+        if ($changedUserValues['old'] !== [] || $passwordWasProvided) {
+            $this->auditLogService->record(
+                event: 'user.updated',
+                auditable: $updatedUser,
+                oldValues: $changedUserValues['old'],
+                newValues: $changedUserValues['new'],
+                request: request(),
+            );
+        }
+
+        $newRoleSlugs = $this->roleSlugsForUser($updatedUser);
+
+        if ($oldRoleSlugs !== $newRoleSlugs) {
+            $this->auditLogService->record(
+                event: 'user.roles_synced',
+                auditable: $updatedUser,
+                oldValues: ['role_slugs' => $oldRoleSlugs],
+                newValues: ['role_slugs' => $newRoleSlugs],
+                request: request(),
+            );
+        }
+
+        return $updatedUser;
     }
 
     /**
@@ -84,9 +131,21 @@ class UserService
      */
     public function activate(User $user): void
     {
+        $wasActive = (bool) $user->is_active;
+
         DB::transaction(function () use ($user): void {
             $user->update(['is_active' => true]);
         });
+
+        if ($wasActive === false) {
+            $this->auditLogService->record(
+                event: 'user.activated',
+                auditable: $user->refresh(),
+                oldValues: ['is_active' => false],
+                newValues: ['is_active' => true],
+                request: request(),
+            );
+        }
     }
 
     /**
@@ -102,9 +161,21 @@ class UserService
 
         $this->ensureUserCanBeDeactivated($user);
 
+        $wasActive = (bool) $user->is_active;
+
         DB::transaction(function () use ($user): void {
             $user->update(['is_active' => false]);
         });
+
+        if ($wasActive === true) {
+            $this->auditLogService->record(
+                event: 'user.deactivated',
+                auditable: $user->refresh(),
+                oldValues: ['is_active' => true],
+                newValues: ['is_active' => false],
+                request: request(),
+            );
+        }
     }
 
     /**
@@ -118,6 +189,58 @@ class UserService
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Return safe user fields for audit logging.
+     *
+     * @return array<string, mixed>
+     */
+    private function safeUserValues(User $user): array
+    {
+        return [
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_active' => (bool) $user->is_active,
+        ];
+    }
+
+    /**
+     * Return sorted role slugs for audit logging.
+     *
+     * @return list<string>
+     */
+    private function roleSlugsForUser(User $user): array
+    {
+        return $user->roles()
+            ->orderBy('slug')
+            ->pluck('slug')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Extract changed audit values from two safe snapshots.
+     *
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}
+     */
+    private function changedValues(array $oldValues, array $newValues): array
+    {
+        $old = [];
+        $new = [];
+
+        foreach ($newValues as $key => $value) {
+            if (($oldValues[$key] ?? null) === $value) {
+                continue;
+            }
+
+            $old[$key] = $oldValues[$key] ?? null;
+            $new[$key] = $value;
+        }
+
+        return ['old' => $old, 'new' => $new];
     }
 
     /**

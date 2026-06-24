@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\UserManagement;
 
+use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -59,6 +60,7 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseMissing('users', [
             'email' => 'blocked.create@example.com',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_user_without_user_update_cannot_update_users(): void
@@ -86,6 +88,7 @@ class UserManagementTest extends TestCase
             'name' => 'Original User',
             'email' => 'original.user@example.com',
         ]);
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_user_without_user_update_cannot_activate_users(): void
@@ -160,6 +163,33 @@ class UserManagementTest extends TestCase
         $this->assertTrue($createdUser->roles()->whereKey($role->id)->exists());
     }
 
+    public function test_creating_user_creates_user_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['user.create']);
+        $role = $this->createRole('Reporter / Employee', 'reporter-employee');
+
+        $this->actingAs($user)->post(route('users.store'), [
+            'name' => 'Audited Reporter',
+            'email' => 'audited.reporter@example.com',
+            'password' => 'SecurePassword123!',
+            'password_confirmation' => 'SecurePassword123!',
+            'role_ids' => [$role->id],
+            'is_active' => true,
+        ])->assertRedirect(route('users.index'));
+
+        $createdUser = User::query()->where('email', 'audited.reporter@example.com')->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('user.created', $createdUser);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Audited Reporter',
+            'email' => 'audited.reporter@example.com',
+            'is_active' => true,
+            'role_slugs' => ['reporter-employee'],
+        ], $auditLog->new_values);
+        $this->assertArrayNotHasKey('password', $auditLog->new_values);
+    }
+
     public function test_created_user_password_is_hashed(): void
     {
         $user = $this->createUserWithPermissions(['user.create']);
@@ -231,6 +261,35 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_updating_user_safe_fields_creates_user_updated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['user.update']);
+        $role = $this->createRole('SOC Analyst', 'soc-analyst');
+        $managedUser = User::factory()->create([
+            'name' => 'Original Analyst',
+            'email' => 'original.audit.analyst@example.com',
+            'is_active' => true,
+        ]);
+        $managedUser->roles()->sync([$role->id]);
+
+        $this->actingAs($user)->patch(route('users.update', $managedUser), [
+            'name' => 'Updated Analyst',
+            'email' => 'updated.audit.analyst@example.com',
+            'role_ids' => [$role->id],
+        ])->assertRedirect(route('users.index'));
+
+        $auditLog = $this->latestAuditLogFor('user.updated', $managedUser);
+
+        $this->assertSame([
+            'name' => 'Original Analyst',
+            'email' => 'original.audit.analyst@example.com',
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'name' => 'Updated Analyst',
+            'email' => 'updated.audit.analyst@example.com',
+        ], $auditLog->new_values);
+    }
+
     public function test_blank_password_on_update_does_not_change_password(): void
     {
         $user = $this->createUserWithPermissions(['user.update']);
@@ -253,6 +312,29 @@ class UserManagementTest extends TestCase
         $response->assertRedirect(route('users.index'));
 
         $this->assertSame($originalPasswordHash, $managedUser->fresh()->password);
+    }
+
+    public function test_updating_password_does_not_expose_password_or_hash_in_audit_values(): void
+    {
+        $user = $this->createUserWithPermissions(['user.update']);
+        $role = $this->createRole('SOC Analyst', 'soc-analyst');
+        $managedUser = User::factory()->create(['is_active' => true]);
+        $managedUser->roles()->sync([$role->id]);
+
+        $this->actingAs($user)->patch(route('users.update', $managedUser), [
+            'name' => $managedUser->name,
+            'email' => $managedUser->email,
+            'password' => 'NewSecurePassword123!',
+            'password_confirmation' => 'NewSecurePassword123!',
+            'role_ids' => [$role->id],
+        ])->assertRedirect(route('users.index'));
+
+        $auditLog = $this->latestAuditLogFor('user.updated', $managedUser);
+
+        $this->assertSame([], $auditLog->old_values);
+        $this->assertSame([], $auditLog->new_values);
+        $this->assertStringNotContainsString('NewSecurePassword123!', json_encode($auditLog->old_values + $auditLog->new_values));
+        $this->assertStringNotContainsString((string) $managedUser->fresh()->password, json_encode($auditLog->old_values + $auditLog->new_values));
     }
 
     public function test_inactive_roles_cannot_be_assigned_when_updating_user(): void
@@ -303,6 +385,26 @@ class UserManagementTest extends TestCase
         $this->assertTrue($managedUser->roles()->whereKey($newRole->id)->exists());
     }
 
+    public function test_syncing_user_roles_creates_user_roles_synced_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['user.update']);
+        $oldRole = $this->createRole('Reporter / Employee', 'reporter-employee');
+        $newRole = $this->createRole('SOC Analyst', 'soc-analyst');
+        $managedUser = User::factory()->create(['is_active' => true]);
+        $managedUser->roles()->sync([$oldRole->id]);
+
+        $this->actingAs($user)->patch(route('users.update', $managedUser), [
+            'name' => $managedUser->name,
+            'email' => $managedUser->email,
+            'role_ids' => [$newRole->id],
+        ])->assertRedirect(route('users.index'));
+
+        $auditLog = $this->latestAuditLogFor('user.roles_synced', $managedUser);
+
+        $this->assertSame(['role_slugs' => ['reporter-employee']], $auditLog->old_values);
+        $this->assertSame(['role_slugs' => ['soc-analyst']], $auditLog->new_values);
+    }
+
     public function test_authorized_user_can_deactivate_another_user(): void
     {
         $user = $this->createUserWithPermissions(['user.delete']);
@@ -317,6 +419,22 @@ class UserManagementTest extends TestCase
         $this->assertFalse($managedUser->fresh()->is_active);
     }
 
+    public function test_deactivating_user_creates_user_deactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['user.delete']);
+        $role = $this->createRole('Reporter / Employee', 'reporter-employee');
+        $managedUser = User::factory()->create(['is_active' => true]);
+        $managedUser->roles()->sync([$role->id]);
+
+        $this->actingAs($user)->patch(route('users.deactivate', $managedUser))
+            ->assertRedirect(route('users.index'));
+
+        $auditLog = $this->latestAuditLogFor('user.deactivated', $managedUser);
+
+        $this->assertSame(['is_active' => true], $auditLog->old_values);
+        $this->assertSame(['is_active' => false], $auditLog->new_values);
+    }
+
     public function test_authorized_user_can_activate_inactive_user(): void
     {
         $user = $this->createUserWithPermissions(['user.update']);
@@ -329,6 +447,22 @@ class UserManagementTest extends TestCase
         $response->assertRedirect(route('users.index'));
 
         $this->assertTrue($managedUser->fresh()->is_active);
+    }
+
+    public function test_activating_user_creates_user_activated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['user.update']);
+        $role = $this->createRole('Reporter / Employee', 'reporter-employee');
+        $managedUser = User::factory()->create(['is_active' => false]);
+        $managedUser->roles()->sync([$role->id]);
+
+        $this->actingAs($user)->patch(route('users.activate', $managedUser))
+            ->assertRedirect(route('users.index'));
+
+        $auditLog = $this->latestAuditLogFor('user.activated', $managedUser);
+
+        $this->assertSame(['is_active' => false], $auditLog->old_values);
+        $this->assertSame(['is_active' => true], $auditLog->new_values);
     }
 
     public function test_current_user_cannot_deactivate_self(): void
@@ -357,6 +491,10 @@ class UserManagementTest extends TestCase
         $response->assertSessionHasErrors('is_active');
 
         $this->assertTrue($superAdmin->fresh()->is_active);
+        $this->assertDatabaseMissing('audit_logs', [
+            'event' => 'user.deactivated',
+            'auditable_id' => $superAdmin->id,
+        ]);
     }
 
     public function test_last_active_super_admin_role_cannot_be_removed(): void
@@ -383,6 +521,10 @@ class UserManagementTest extends TestCase
 
         $this->assertTrue($superAdmin->roles()->whereKey($superAdminRole->id)->exists());
         $this->assertFalse($superAdmin->roles()->whereKey($securityManagerRole->id)->exists());
+        $this->assertDatabaseMissing('audit_logs', [
+            'event' => 'user.roles_synced',
+            'auditable_id' => $superAdmin->id,
+        ]);
     }
 
     /**
@@ -438,5 +580,15 @@ class UserManagementTest extends TestCase
                 'is_active' => true,
             ],
         );
+    }
+
+    private function latestAuditLogFor(string $event, User $user): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $user->getMorphClass())
+            ->where('auditable_id', $user->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }

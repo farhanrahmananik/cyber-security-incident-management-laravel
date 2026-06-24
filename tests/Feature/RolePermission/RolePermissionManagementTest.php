@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\RolePermission;
 
+use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -75,6 +76,32 @@ class RolePermissionManagementTest extends TestCase
         $this->assertTrue($role->permissions()->whereKey($permission->id)->exists());
     }
 
+    public function test_creating_role_creates_role_created_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['role.create']);
+        $permission = $this->createPermission('incident.view', 'Incident View', 'incidents');
+
+        $this->actingAs($user)->post(route('roles.store'), [
+            'name' => 'Incident Reviewer',
+            'slug' => '',
+            'description' => 'Reviews submitted incident records.',
+            'is_active' => true,
+            'permission_ids' => [$permission->id],
+        ])->assertRedirect(route('roles.index'));
+
+        $role = Role::query()->where('slug', 'incident-reviewer')->firstOrFail();
+        $auditLog = $this->latestAuditLogFor('role.created', $role);
+
+        $this->assertSame($user->id, $auditLog->user_id);
+        $this->assertSame([
+            'name' => 'Incident Reviewer',
+            'slug' => 'incident-reviewer',
+            'description' => 'Reviews submitted incident records.',
+            'is_active' => true,
+            'permission_slugs' => ['incident.view'],
+        ], $auditLog->new_values);
+    }
+
     public function test_duplicate_role_slug_generated_from_name_fails_validation(): void
     {
         $user = $this->createUserWithPermissions(['role.create']);
@@ -112,6 +139,31 @@ class RolePermissionManagementTest extends TestCase
         ]);
     }
 
+    public function test_updating_role_creates_role_updated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['role.update']);
+        $role = $this->createRole('Incident Reviewer', 'incident-reviewer');
+
+        $this->actingAs($user)->patch(route('roles.update', $role), [
+            'name' => 'Incident Review Lead',
+            'slug' => 'incident-review-lead',
+            'description' => 'Coordinates incident review activity.',
+        ])->assertRedirect(route('roles.index'));
+
+        $auditLog = $this->latestAuditLogFor('role.updated', $role);
+
+        $this->assertSame([
+            'name' => 'Incident Reviewer',
+            'slug' => 'incident-reviewer',
+            'description' => null,
+        ], $auditLog->old_values);
+        $this->assertSame([
+            'name' => 'Incident Review Lead',
+            'slug' => 'incident-review-lead',
+            'description' => 'Coordinates incident review activity.',
+        ], $auditLog->new_values);
+    }
+
     public function test_user_with_role_update_can_sync_active_permissions(): void
     {
         $user = $this->createUserWithPermissions(['role.update']);
@@ -132,6 +184,26 @@ class RolePermissionManagementTest extends TestCase
 
         $this->assertFalse($role->permissions()->whereKey($oldPermission->id)->exists());
         $this->assertTrue($role->permissions()->whereKey($newPermission->id)->exists());
+    }
+
+    public function test_syncing_permissions_creates_role_permissions_synced_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['role.update']);
+        $oldPermission = $this->createPermission('incident.view', 'Incident View', 'incidents');
+        $newPermission = $this->createPermission('incident.update', 'Incident Update', 'incidents');
+        $role = $this->createRole('Incident Reviewer', 'incident-reviewer', true, [$oldPermission->id]);
+
+        $this->actingAs($user)->patch(route('roles.update', $role), [
+            'name' => $role->name,
+            'slug' => $role->slug,
+            'description' => $role->description,
+            'permission_ids' => [$newPermission->id],
+        ])->assertRedirect(route('roles.index'));
+
+        $auditLog = $this->latestAuditLogFor('role.permissions_synced', $role);
+
+        $this->assertSame(['permission_slugs' => ['incident.view']], $auditLog->old_values);
+        $this->assertSame(['permission_slugs' => ['incident.update']], $auditLog->new_values);
     }
 
     public function test_inactive_permissions_cannot_be_assigned_when_creating_role(): void
@@ -239,6 +311,34 @@ class RolePermissionManagementTest extends TestCase
         $this->assertFalse($role->fresh()->is_active);
     }
 
+    public function test_deactivating_role_creates_role_deactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['role.delete']);
+        $role = $this->createRole('Incident Reviewer', 'incident-reviewer');
+
+        $this->actingAs($user)->patch(route('roles.deactivate', $role))
+            ->assertRedirect(route('roles.index'));
+
+        $auditLog = $this->latestAuditLogFor('role.deactivated', $role);
+
+        $this->assertSame(['is_active' => true], $auditLog->old_values);
+        $this->assertSame(['is_active' => false], $auditLog->new_values);
+    }
+
+    public function test_reactivating_role_creates_role_reactivated_audit_log(): void
+    {
+        $user = $this->createUserWithPermissions(['role.update']);
+        $role = $this->createRole('Incident Reviewer', 'incident-reviewer', false);
+
+        $this->actingAs($user)->patch(route('roles.activate', $role))
+            ->assertRedirect(route('roles.index'));
+
+        $auditLog = $this->latestAuditLogFor('role.reactivated', $role);
+
+        $this->assertSame(['is_active' => false], $auditLog->old_values);
+        $this->assertSame(['is_active' => true], $auditLog->new_values);
+    }
+
     public function test_super_admin_role_cannot_be_deactivated(): void
     {
         $user = $this->createUserWithPermissions(['role.delete']);
@@ -249,6 +349,10 @@ class RolePermissionManagementTest extends TestCase
         $response->assertSessionHasErrors('role');
 
         $this->assertTrue($superAdminRole->fresh()->is_active);
+        $this->assertDatabaseMissing('audit_logs', [
+            'event' => 'role.deactivated',
+            'auditable_id' => $superAdminRole->id,
+        ]);
     }
 
     public function test_super_admin_slug_cannot_be_changed(): void
@@ -268,6 +372,10 @@ class RolePermissionManagementTest extends TestCase
             'id' => $superAdminRole->id,
             'slug' => 'super-admin',
         ]);
+        $this->assertDatabaseMissing('audit_logs', [
+            'event' => 'role.updated',
+            'auditable_id' => $superAdminRole->id,
+        ]);
     }
 
     public function test_another_super_admin_slug_cannot_be_created(): void
@@ -285,6 +393,9 @@ class RolePermissionManagementTest extends TestCase
         $response->assertSessionHasErrors('slug');
 
         $this->assertSame(1, Role::query()->where('slug', 'super-admin')->count());
+        $this->assertDatabaseMissing('audit_logs', [
+            'event' => 'role.created',
+        ]);
     }
 
     public function test_sidebar_shows_role_permission_link_for_role_view_users(): void
@@ -394,5 +505,15 @@ class RolePermissionManagementTest extends TestCase
         );
 
         return $matches[1] ?? '';
+    }
+
+    private function latestAuditLogFor(string $event, Role $role): AuditLog
+    {
+        return AuditLog::query()
+            ->where('event', $event)
+            ->where('auditable_type', $role->getMorphClass())
+            ->where('auditable_id', $role->id)
+            ->latest('created_at')
+            ->firstOrFail();
     }
 }
