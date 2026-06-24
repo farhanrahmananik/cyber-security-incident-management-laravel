@@ -11,6 +11,7 @@ use App\Http\Controllers\IncidentSetup\SeverityLevelController;
 use App\Http\Controllers\Investigation\InvestigationNoteController;
 use App\Http\Controllers\Ioc\IncidentIocController;
 use App\Http\Controllers\Report\SecurityReportController;
+use App\Http\Controllers\RolePermission\RoleController;
 use App\Http\Controllers\ResponseAction\ResponseActionController;
 use App\Http\Controllers\UserManagement\UserController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,31 @@ Route::middleware('auth')->group(function () {
 
             Route::patch('/{user}/deactivate', 'deactivate')
                 ->middleware('permission:user.delete')
+                ->name('deactivate');
+        });
+
+    Route::prefix('roles')
+        ->name('roles.')
+        ->controller(RoleController::class)
+        ->group(function () {
+            Route::get('/', 'index')
+                ->middleware('permission:role.view')
+                ->name('index');
+
+            Route::post('/', 'store')
+                ->middleware('permission:role.create')
+                ->name('store');
+
+            Route::patch('/{role}', 'update')
+                ->middleware('permission:role.update')
+                ->name('update');
+
+            Route::patch('/{role}/activate', 'activate')
+                ->middleware('permission:role.update')
+                ->name('activate');
+
+            Route::patch('/{role}/deactivate', 'deactivate')
+                ->middleware('permission:role.delete')
                 ->name('deactivate');
         });
 
