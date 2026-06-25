@@ -1,4 +1,4 @@
-<div class="table-responsive">
+<div class="report-table-shell table-responsive">
     <table class="table table-striped align-middle mb-0">
         <thead>
             <tr>
@@ -10,11 +10,13 @@
             @forelse ($rows as $row)
                 <tr data-report-breakdown="{{ $row['key'] }}">
                     <td>{{ $row['label'] }}</td>
-                    <td class="text-end">{{ $row['total'] }}</td>
+                    <td class="text-end">
+                        <span class="report-count-badge">{{ $row['total'] }}</span>
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="2" class="text-secondary">
+                    <td colspan="2" class="text-secondary py-4">
                         {{ $emptyMessage }}
                     </td>
                 </tr>

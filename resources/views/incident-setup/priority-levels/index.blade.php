@@ -15,15 +15,20 @@
     @endif
 
     @can('priority-level.manage')
-        <div class="bg-white border rounded-2 p-4 mb-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                <div>
-                    <h2 class="h5 mb-1">Create Priority Level</h2>
-                    <p class="text-secondary mb-0">Define operational response priority for incident handling.</p>
+        <div class="setup-page-card setup-create-card bg-white border rounded-2 p-4 mb-4">
+            <div class="setup-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="setup-card-icon" aria-hidden="true">
+                        <i class="ti ti-flag-3"></i>
+                    </span>
+                    <div>
+                        <h2 class="h5 mb-1">Create Priority Level</h2>
+                        <p class="text-secondary mb-0">Define operational response priority for incident handling.</p>
+                    </div>
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('priority-levels.store') }}" class="row g-3">
+            <form method="POST" action="{{ route('priority-levels.store') }}" class="setup-form row g-3">
                 @csrf
 
                 <div class="col-md-6">
@@ -111,16 +116,21 @@
         </div>
     @endcan
 
-    <div class="bg-white border rounded-2 p-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-            <div>
-                <h2 class="h5 mb-1">Priority Levels</h2>
-                <p class="text-secondary mb-0">Master data for incident response prioritization.</p>
+    <div class="setup-page-card bg-white border rounded-2 p-4">
+        <div class="setup-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="setup-card-icon" aria-hidden="true">
+                    <i class="ti ti-target-arrow"></i>
+                </span>
+                <div>
+                    <h2 class="h5 mb-1">Priority Levels</h2>
+                    <p class="text-secondary mb-0">Master data for incident response prioritization.</p>
+                </div>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table id="priority-levels-table" class="table table-striped align-middle data-table mb-0">
+        <div class="setup-table-shell table-responsive">
+            <table id="priority-levels-table" class="setup-table table table-striped align-middle data-table mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -134,13 +144,27 @@
                 </thead>
                 <tbody>
                     @forelse ($priorityLevels as $priorityLevel)
+                        @php
+                            $prioritySlug = strtolower((string) $priorityLevel->slug);
+                            $priorityBadgeClass = match ($prioritySlug) {
+                                'low' => 'priority-badge-low',
+                                'medium' => 'priority-badge-medium',
+                                'high' => 'priority-badge-high',
+                                'urgent', 'critical' => 'priority-badge-urgent',
+                                default => 'priority-badge-default',
+                            };
+                        @endphp
                         <tr>
-                            <td class="fw-semibold">{{ $priorityLevel->name }}</td>
-                            <td><code>{{ $priorityLevel->slug }}</code></td>
+                            <td class="fw-semibold">
+                                <span class="priority-badge {{ $priorityBadgeClass }}">
+                                    {{ $priorityLevel->name }}
+                                </span>
+                            </td>
+                            <td><code class="setup-code">{{ $priorityLevel->slug }}</code></td>
                             <td>{{ $priorityLevel->description ?: 'Not provided' }}</td>
                             <td>
                                 @if ($priorityLevel->color)
-                                    <span class="badge text-bg-light border">{{ $priorityLevel->color }}</span>
+                                    <span class="setup-meta-badge badge text-bg-light border">{{ $priorityLevel->color }}</span>
                                 @else
                                     <span class="text-secondary">Not set</span>
                                 @endif
@@ -148,20 +172,21 @@
                             <td>{{ $priorityLevel->sort_order }}</td>
                             <td>
                                 @if ($priorityLevel->is_active)
-                                    <span class="badge text-bg-success">Active</span>
+                                    <span class="status-badge status-badge-active">Active</span>
                                 @else
-                                    <span class="badge text-bg-secondary">Inactive</span>
+                                    <span class="status-badge status-badge-inactive">Inactive</span>
                                 @endif
                             </td>
                             <td class="text-end">
                                 @can('priority-level.manage')
-                                    <div class="d-inline-flex justify-content-end gap-2">
+                                    <div class="setup-action-group d-inline-flex justify-content-end gap-2">
                                         <button
                                             type="button"
                                             class="btn btn-outline-primary btn-sm"
                                             data-bs-toggle="modal"
                                             data-bs-target="#editPriorityLevel{{ $priorityLevel->id }}"
                                         >
+                                            <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                             Edit
                                         </button>
 
@@ -173,11 +198,15 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="ti ti-circle-off me-1" aria-hidden="true"></i>
                                                     Deactivate
                                                 </button>
                                             </form>
                                         @else
-                                            <span class="btn btn-outline-secondary btn-sm disabled">Inactive</span>
+                                            <span class="btn btn-outline-secondary btn-sm disabled">
+                                                <i class="ti ti-lock me-1" aria-hidden="true"></i>
+                                                Inactive
+                                            </span>
                                         @endif
                                     </div>
                                 @else
@@ -188,7 +217,15 @@
                     @empty
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
-                                No priority levels have been created yet.
+                                <span class="setup-empty-state">
+                                    <span class="setup-empty-icon" aria-hidden="true">
+                                        <i class="ti ti-flag-plus"></i>
+                                    </span>
+                                    <span>
+                                        <span class="setup-empty-title d-block">No priority levels have been created yet.</span>
+                                        <span class="setup-empty-copy d-block">Create priority levels to guide response urgency.</span>
+                                    </span>
+                                </span>
                             </td>
                         </tr>
                     @endforelse
@@ -200,7 +237,7 @@
     @can('priority-level.manage')
         @foreach ($priorityLevels as $priorityLevel)
             <div
-                class="modal fade"
+                class="modal fade setup-modal"
                 id="editPriorityLevel{{ $priorityLevel->id }}"
                 tabindex="-1"
                 aria-labelledby="editPriorityLevelLabel{{ $priorityLevel->id }}"
