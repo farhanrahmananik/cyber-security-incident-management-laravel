@@ -4,8 +4,14 @@
 
 @section('page-actions')
     <div class="d-flex gap-2">
-        <a href="{{ route('incidents.show', $incident) }}" class="btn btn-outline-secondary">View Incident</a>
-        <a href="{{ route('incidents.index') }}" class="btn btn-outline-secondary">Back to Incidents</a>
+        <a href="{{ route('incidents.show', $incident) }}" class="btn btn-outline-secondary">
+            <i class="ti ti-eye me-1" aria-hidden="true"></i>
+            View Incident
+        </a>
+        <a href="{{ route('incidents.index') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1" aria-hidden="true"></i>
+            Back to Incidents
+        </a>
     </div>
 @endsection
 
@@ -21,19 +27,24 @@
         </div>
     @endif
 
-    <div class="bg-white border rounded-2 p-4">
-        <div class="mb-4">
-            <p class="text-secondary mb-1">{{ $incident->incident_number }}</p>
-            <h2 class="h5 mb-1">Edit Incident</h2>
-            <p class="text-secondary mb-0">Update the incident report fields available in this foundation step.</p>
+    <div class="incident-panel incident-page-card incident-form-shell incident-form-section bg-white border rounded-2 p-4">
+        <div class="incident-form-hero mb-4">
+            <span class="incident-panel-icon" aria-hidden="true">
+                <i class="ti ti-clipboard-edit"></i>
+            </span>
+            <div>
+                <p class="text-secondary mb-1">{{ $incident->incident_number }}</p>
+                <h2 class="h5 mb-1">Edit Incident</h2>
+                <p class="text-secondary mb-0">Update the incident report fields available in this foundation step.</p>
+            </div>
         </div>
 
-        <form method="POST" action="{{ route('incidents.update', $incident) }}" class="row g-3">
+        <form method="POST" action="{{ route('incidents.update', $incident) }}" class="incident-form-grid row g-3">
             @csrf
             @method('PUT')
 
             <div class="col-12">
-                <label for="title" class="form-label">Title</label>
+                <label for="title" class="form-label">Title <span class="incident-required">Required</span></label>
                 <input
                     id="title"
                     name="title"
@@ -49,7 +60,7 @@
             </div>
 
             <div class="col-md-4">
-                <label for="incident_category_id" class="form-label">Category</label>
+                <label for="incident_category_id" class="form-label">Category <span class="incident-required">Required</span></label>
                 <select
                     id="incident_category_id"
                     name="incident_category_id"
@@ -71,7 +82,7 @@
             </div>
 
             <div class="col-md-4">
-                <label for="severity_level_id" class="form-label">Severity</label>
+                <label for="severity_level_id" class="form-label">Severity <span class="incident-required">Required</span></label>
                 <select
                     id="severity_level_id"
                     name="severity_level_id"
@@ -93,7 +104,7 @@
             </div>
 
             <div class="col-md-4">
-                <label for="priority_level_id" class="form-label">Priority</label>
+                <label for="priority_level_id" class="form-label">Priority <span class="incident-required">Required</span></label>
                 <select
                     id="priority_level_id"
                     name="priority_level_id"
@@ -127,6 +138,7 @@
                 @error('affected_system')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
+                <div class="incident-helper">Hostname, application, network segment, endpoint, or service if known.</div>
             </div>
 
             <div class="col-md-3">
@@ -168,7 +180,7 @@
             </div>
 
             <div class="col-12">
-                <label for="description" class="form-label">Description</label>
+                <label for="description" class="form-label">Description <span class="incident-required">Required</span></label>
                 <textarea
                     id="description"
                     name="description"
@@ -195,7 +207,15 @@
             </div>
 
             <div class="col-12">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div class="incident-action-row d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-device-floppy me-1" aria-hidden="true"></i>
+                        Save Changes
+                    </button>
+                    <a href="{{ route('incidents.show', $incident) }}" class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                </div>
             </div>
         </form>
     </div>

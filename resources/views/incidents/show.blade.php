@@ -5,9 +5,15 @@
 @section('page-actions')
     <div class="d-flex gap-2">
         @can('incident.update')
-            <a href="{{ route('incidents.edit', $incident) }}" class="btn btn-outline-primary">Edit</a>
+            <a href="{{ route('incidents.edit', $incident) }}" class="btn btn-outline-primary">
+                <i class="ti ti-pencil me-1" aria-hidden="true"></i>
+                Edit
+            </a>
         @endcan
-        <a href="{{ route('incidents.index') }}" class="btn btn-outline-secondary">Back to Incidents</a>
+        <a href="{{ route('incidents.index') }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1" aria-hidden="true"></i>
+            Back to Incidents
+        </a>
     </div>
 @endsection
 
@@ -95,18 +101,25 @@
         };
     @endphp
 
-    <div class="row g-4">
+    <div class="row g-4 incident-detail-grid">
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
+            <div class="incident-summary-card incident-detail-hero bg-white border rounded-2 p-4">
                 <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-                    <div>
-                        <p class="text-secondary mb-1">{{ $incident->incident_number }}</p>
-                        <h2 class="h4 mb-2">{{ $incident->title }}</h2>
-                        <span class="badge {{ $incidentStatusBadgeClasses[$incident->status] ?? 'text-bg-info' }}">
-                            {{ $incidentStatusLabels[$incident->status] ?? str($incident->status)->replace('_', ' ')->title() }}
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="incident-panel-icon" aria-hidden="true">
+                            <i class="ti ti-shield-search"></i>
                         </span>
+                        <div>
+                            <p class="text-secondary mb-1">
+                                <code class="incident-code">{{ $incident->incident_number }}</code>
+                            </p>
+                            <h2 class="h4 mb-2">{{ $incident->title }}</h2>
+                            <span class="incident-status-badge badge {{ $incidentStatusBadgeClasses[$incident->status] ?? 'text-bg-info' }}">
+                                {{ $incidentStatusLabels[$incident->status] ?? str($incident->status)->replace('_', ' ')->title() }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="text-md-end">
+                    <div class="incident-reporter-card text-md-end">
                         <p class="text-secondary mb-1">Reporter</p>
                         <p class="fw-semibold mb-0">{{ $incident->reporter?->name ?? 'Unknown' }}</p>
                         <p class="text-secondary mb-0">{{ $incident->reporter?->email }}</p>
@@ -116,57 +129,62 @@
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Category</p>
                 <p class="fw-semibold mb-0">{{ $incident->category?->name ?? 'Not set' }}</p>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Severity</p>
                 <p class="fw-semibold mb-0">{{ $incident->severity?->name ?? 'Not set' }}</p>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Priority</p>
                 <p class="fw-semibold mb-0">{{ $incident->priority?->name ?? 'Not set' }}</p>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Affected System</p>
                 <p class="fw-semibold mb-0">{{ $incident->affected_system ?: 'Not provided' }}</p>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Occurred At</p>
                 <p class="fw-semibold mb-0">{{ $incident->occurred_at?->format('Y-m-d H:i') ?? 'Not provided' }}</p>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="bg-white border rounded-2 p-4 h-100">
+            <div class="incident-meta-card incident-detail-card bg-white border rounded-2 p-4 h-100">
                 <p class="text-secondary mb-1">Detected At</p>
                 <p class="fw-semibold mb-0">{{ $incident->detected_at?->format('Y-m-d H:i') ?? 'Not provided' }}</p>
             </div>
         </div>
 
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
+            <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                     <div class="flex-fill">
-                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
-                            <div>
-                                <h2 class="h5 mb-1">Incident Status Workflow</h2>
-                                <p class="text-secondary mb-0">
-                                    Track controlled incident status transitions from report intake through closure.
-                                </p>
+                        <div class="incident-panel-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                            <div class="d-flex align-items-start gap-3">
+                                <span class="incident-panel-icon" aria-hidden="true">
+                                    <i class="ti ti-route"></i>
+                                </span>
+                                <div>
+                                    <h2 class="h5 mb-1">Incident Status Workflow</h2>
+                                    <p class="text-secondary mb-0">
+                                        Track controlled incident status transitions from report intake through closure.
+                                    </p>
+                                </div>
                             </div>
                             <div class="text-md-end">
                                 <p class="text-secondary mb-1">Current Status</p>
@@ -178,7 +196,7 @@
 
                         <h3 class="h6 mb-3">Status Transition History</h3>
                         @forelse ($statusTransitions as $statusTransition)
-                            <div class="border rounded-2 p-3 mb-3">
+                            <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                 <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
                                     <div>
                                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -204,14 +222,14 @@
                                 @endif
                             </div>
                         @empty
-                            <div class="border rounded-2 p-3 text-secondary">
+                            <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                 No status transitions recorded yet.
                             </div>
                         @endforelse
                     </div>
 
                     @can('incident.status.update')
-                        <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                        <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                             <h3 class="h6 mb-3">Update Status</h3>
 
                             @if (count($availableStatusTransitions) > 0)
@@ -256,7 +274,10 @@
                                         @enderror
                                     </div>
 
-                                    <button type="submit" class="btn btn-primary">Update Status</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-refresh me-1" aria-hidden="true"></i>
+                                        Update Status
+                                    </button>
                                 </form>
                             @else
                                 <p class="text-secondary mb-0">
@@ -270,10 +291,18 @@
         </div>
 
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
+            <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                     <div class="flex-fill">
-                        <h2 class="h5 mb-3">Assignment</h2>
+                        <div class="incident-panel-header d-flex align-items-start gap-3 mb-4">
+                            <span class="incident-panel-icon" aria-hidden="true">
+                                <i class="ti ti-user-check"></i>
+                            </span>
+                            <div>
+                                <h2 class="h5 mb-1">Assignment</h2>
+                                <p class="text-secondary mb-0">Track current analyst ownership and assignment history.</p>
+                            </div>
+                        </div>
 
                         <div class="mb-4">
                             <p class="text-secondary mb-1">Current Assignee</p>
@@ -287,7 +316,7 @@
 
                         <h3 class="h6 mb-3">Assignment History</h3>
                         @forelse ($assignmentHistory as $assignment)
-                            <div class="border rounded-2 p-3 mb-3">
+                            <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                 <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
                                     <div>
                                         <p class="fw-semibold mb-1">
@@ -307,14 +336,14 @@
                                 @endif
                             </div>
                         @empty
-                            <div class="border rounded-2 p-3 text-secondary">
+                            <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                 No assignment history has been recorded yet.
                             </div>
                         @endforelse
                     </div>
 
                     @can('incident.assign')
-                        <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                        <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                             <h3 class="h6 mb-3">
                                 {{ $incident->currentAssignee ? 'Reassign Analyst' : 'Assign Analyst' }}
                             </h3>
@@ -360,6 +389,7 @@
                                 </div>
 
                                 <button type="submit" class="btn btn-primary">
+                                    <i class="ti ti-user-plus me-1" aria-hidden="true"></i>
                                     {{ $incident->currentAssignee ? 'Reassign Analyst' : 'Assign Analyst' }}
                                 </button>
                             </form>
@@ -371,16 +401,23 @@
 
         @can('investigation-note.view')
             <div class="col-12">
-                <div class="bg-white border rounded-2 p-4">
+                <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                         <div class="flex-fill">
-                            <h2 class="h5 mb-1">Investigation Notes</h2>
-                            <p class="text-secondary mb-4">
-                                Internal SOC notes for triage, analysis, and response tracking.
-                            </p>
+                            <div class="incident-panel-header d-flex align-items-start gap-3 mb-4">
+                                <span class="incident-panel-icon" aria-hidden="true">
+                                    <i class="ti ti-notes"></i>
+                                </span>
+                                <div>
+                                    <h2 class="h5 mb-1">Investigation Notes</h2>
+                                    <p class="text-secondary mb-0">
+                                        Internal SOC notes for triage, analysis, and response tracking.
+                                    </p>
+                                </div>
+                            </div>
 
                             @forelse ($investigationNotes as $investigationNote)
-                                <div class="border rounded-2 p-3 mb-3">
+                                <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                     <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
                                         <div>
                                             <p class="fw-semibold mb-1">
@@ -391,10 +428,11 @@
                                             </p>
                                         </div>
 
-                                        <div class="d-flex flex-wrap gap-2">
+                                        <div class="incident-action-row d-flex flex-wrap gap-2">
                                             @can('investigation-note.update')
                                                 <details>
                                                     <summary class="btn btn-outline-primary btn-sm">
+                                                        <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                                         Edit
                                                     </summary>
                                                     <form
@@ -421,6 +459,7 @@
                                                         @enderror
 
                                                         <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                                            <i class="ti ti-device-floppy me-1" aria-hidden="true"></i>
                                                             Save Note
                                                         </button>
                                                     </form>
@@ -436,6 +475,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="ti ti-trash me-1" aria-hidden="true"></i>
                                                         Delete
                                                     </button>
                                                 </form>
@@ -446,14 +486,14 @@
                                     <p class="mb-0" style="white-space: pre-line;">{{ $investigationNote->note }}</p>
                                 </div>
                             @empty
-                                <div class="border rounded-2 p-3 text-secondary">
+                                <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                     No investigation notes have been recorded yet.
                                 </div>
                             @endforelse
                         </div>
 
                         @can('investigation-note.create')
-                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                            <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                                 <h3 class="h6 mb-3">Add Investigation Note</h3>
 
                                 <form method="POST" action="{{ route('incidents.investigation-notes.store', $incident) }}">
@@ -475,6 +515,7 @@
                                     </div>
 
                                     <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-plus me-1" aria-hidden="true"></i>
                                         Add Note
                                     </button>
                                 </form>
@@ -487,16 +528,23 @@
 
         @can('ioc.view')
             <div class="col-12">
-                <div class="bg-white border rounded-2 p-4">
+                <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                         <div class="flex-fill">
-                            <h2 class="h5 mb-1">Indicators of Compromise</h2>
-                            <p class="text-secondary mb-4">
-                                Incident-linked observables for threat analysis, enrichment, and response tracking.
-                            </p>
+                            <div class="incident-panel-header d-flex align-items-start gap-3 mb-4">
+                                <span class="incident-panel-icon" aria-hidden="true">
+                                    <i class="ti ti-radar"></i>
+                                </span>
+                                <div>
+                                    <h2 class="h5 mb-1">Indicators of Compromise</h2>
+                                    <p class="text-secondary mb-0">
+                                        Incident-linked observables for threat analysis, enrichment, and response tracking.
+                                    </p>
+                                </div>
+                            </div>
 
                             @forelse ($iocs as $incidentIoc)
-                                <div class="border rounded-2 p-3 mb-3">
+                                <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                     <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-3">
                                         <div class="flex-fill">
                                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -513,9 +561,9 @@
                                                 @endif
                                             </div>
 
-                                            <code class="d-block text-break mb-2">{{ $incidentIoc->value }}</code>
+                                            <code class="incident-code-block d-block text-break mb-2">{{ $incidentIoc->value }}</code>
 
-                                            <div class="row g-2 text-secondary small">
+                                            <div class="incident-meta-grid row g-2 text-secondary small">
                                                 <div class="col-md-6">
                                                     First seen:
                                                     <span class="text-body">
@@ -548,15 +596,16 @@
                                         </div>
 
                                         @can('ioc.manage')
-                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                            <div class="incident-action-row d-flex flex-wrap align-items-start gap-2">
                                                 <details>
                                                     <summary class="btn btn-outline-primary btn-sm">
+                                                        <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                                         Edit
                                                     </summary>
                                                     <form
                                                         method="POST"
                                                         action="{{ route('incidents.iocs.update', [$incident, $incidentIoc]) }}"
-                                                        class="mt-3 border rounded-2 p-3"
+                                                        class="incident-panel-body mt-3 border rounded-2 p-3"
                                                         style="min-width: min(100%, 420px);"
                                                     >
                                                         @csrf
@@ -666,6 +715,7 @@
                                                         </div>
 
                                                         <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                                            <i class="ti ti-device-floppy me-1" aria-hidden="true"></i>
                                                             Save IOC
                                                         </button>
                                                     </form>
@@ -679,6 +729,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="ti ti-trash me-1" aria-hidden="true"></i>
                                                         Delete
                                                     </button>
                                                 </form>
@@ -687,14 +738,14 @@
                                     </div>
                                 </div>
                             @empty
-                                <div class="border rounded-2 p-3 text-secondary">
+                                <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                     No indicators of compromise recorded yet.
                                 </div>
                             @endforelse
                         </div>
 
                         @can('ioc.manage')
-                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                            <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                                 <h3 class="h6 mb-3">Add IOC</h3>
 
                                 <form method="POST" action="{{ route('incidents.iocs.store', $incident) }}">
@@ -799,6 +850,7 @@
                                     </div>
 
                                     <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-plus me-1" aria-hidden="true"></i>
                                         Add IOC
                                     </button>
                                 </form>
@@ -811,16 +863,23 @@
 
         @can('evidence.view')
             <div class="col-12">
-                <div class="bg-white border rounded-2 p-4">
+                <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                         <div class="flex-fill">
-                            <h2 class="h5 mb-1">Evidence / Attachments</h2>
-                            <p class="text-secondary mb-4">
-                                Store incident-related files privately with metadata and SHA-256 integrity tracking.
-                            </p>
+                            <div class="incident-panel-header d-flex align-items-start gap-3 mb-4">
+                                <span class="incident-panel-icon" aria-hidden="true">
+                                    <i class="ti ti-paperclip"></i>
+                                </span>
+                                <div>
+                                    <h2 class="h5 mb-1">Evidence / Attachments</h2>
+                                    <p class="text-secondary mb-0">
+                                        Store incident-related files privately with metadata and SHA-256 integrity tracking.
+                                    </p>
+                                </div>
+                            </div>
 
                             @forelse ($evidences as $incidentEvidence)
-                                <div class="border rounded-2 p-3 mb-3">
+                                <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                     <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
                                         <div class="flex-fill">
                                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -837,7 +896,7 @@
                                                 <p class="mb-3" style="white-space: pre-line;">{{ $incidentEvidence->description }}</p>
                                             @endif
 
-                                            <div class="row g-2 text-secondary small mb-3">
+                                            <div class="incident-meta-grid row g-2 text-secondary small mb-3">
                                                 <div class="col-md-6">
                                                     Original filename:
                                                     <span class="text-body text-break">
@@ -864,7 +923,7 @@
                                                 </div>
                                             </div>
 
-                                            <code class="d-block text-break small mb-3">
+                                            <code class="incident-code-block d-block text-break small mb-3">
                                                 {{ $incidentEvidence->checksum_sha256 ?: 'Checksum not available' }}
                                             </code>
 
@@ -872,20 +931,22 @@
                                                 href="{{ route('incidents.evidences.download', [$incident, $incidentEvidence]) }}"
                                                 class="btn btn-outline-secondary btn-sm"
                                             >
+                                                <i class="ti ti-download me-1" aria-hidden="true"></i>
                                                 Download
                                             </a>
                                         </div>
 
                                         @can('evidence.manage')
-                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                            <div class="incident-action-row d-flex flex-wrap align-items-start gap-2">
                                                 <details>
                                                     <summary class="btn btn-outline-primary btn-sm">
+                                                        <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                                         Edit
                                                     </summary>
                                                     <form
                                                         method="POST"
                                                         action="{{ route('incidents.evidences.update', [$incident, $incidentEvidence]) }}"
-                                                        class="mt-3 border rounded-2 p-3"
+                                                        class="incident-panel-body mt-3 border rounded-2 p-3"
                                                         style="min-width: min(100%, 420px);"
                                                     >
                                                         @csrf
@@ -922,6 +983,7 @@
                                                         </div>
 
                                                         <button type="submit" class="btn btn-primary btn-sm">
+                                                            <i class="ti ti-device-floppy me-1" aria-hidden="true"></i>
                                                             Update
                                                         </button>
                                                     </form>
@@ -935,6 +997,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="ti ti-trash me-1" aria-hidden="true"></i>
                                                         Delete
                                                     </button>
                                                 </form>
@@ -943,14 +1006,14 @@
                                     </div>
                                 </div>
                             @empty
-                                <div class="border rounded-2 p-3 text-secondary">
+                                <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                     No evidence attachments have been recorded yet.
                                 </div>
                             @endforelse
                         </div>
 
                         @can('evidence.manage')
-                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                            <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                                 <h3 class="h6 mb-3">Upload Evidence</h3>
 
                                 <form
@@ -1005,6 +1068,7 @@
                                     </div>
 
                                     <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-upload me-1" aria-hidden="true"></i>
                                         Upload Evidence
                                     </button>
                                 </form>
@@ -1017,16 +1081,23 @@
 
         @can('response-action.view')
             <div class="col-12">
-                <div class="bg-white border rounded-2 p-4">
+                <div class="incident-panel incident-page-card bg-white border rounded-2 p-4">
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
                         <div class="flex-fill">
-                            <h2 class="h5 mb-1">Response Actions</h2>
-                            <p class="text-secondary mb-4">
-                                Track containment, eradication, recovery, communication, monitoring, and lessons learned work.
-                            </p>
+                            <div class="incident-panel-header d-flex align-items-start gap-3 mb-4">
+                                <span class="incident-panel-icon" aria-hidden="true">
+                                    <i class="ti ti-heartbeat"></i>
+                                </span>
+                                <div>
+                                    <h2 class="h5 mb-1">Response Actions</h2>
+                                    <p class="text-secondary mb-0">
+                                        Track containment, eradication, recovery, communication, monitoring, and lessons learned work.
+                                    </p>
+                                </div>
+                            </div>
 
                             @forelse ($responseActions as $responseAction)
-                                <div class="border rounded-2 p-3 mb-3">
+                                <div class="incident-panel-body border rounded-2 p-3 mb-3">
                                     <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
                                         <div class="flex-fill">
                                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -1043,7 +1114,7 @@
                                                 <p class="mb-3" style="white-space: pre-line;">{{ $responseAction->description }}</p>
                                             @endif
 
-                                            <div class="row g-2 text-secondary small">
+                                            <div class="incident-meta-grid row g-2 text-secondary small">
                                                 <div class="col-md-6">
                                                     Started:
                                                     <span class="text-body">
@@ -1072,15 +1143,16 @@
                                         </div>
 
                                         @can('response-action.manage')
-                                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                            <div class="incident-action-row d-flex flex-wrap align-items-start gap-2">
                                                 <details>
                                                     <summary class="btn btn-outline-primary btn-sm">
+                                                        <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                                         Edit
                                                     </summary>
                                                     <form
                                                         method="POST"
                                                         action="{{ route('incidents.response-actions.update', [$incident, $responseAction]) }}"
-                                                        class="mt-3 border rounded-2 p-3"
+                                                        class="incident-panel-body mt-3 border rounded-2 p-3"
                                                         style="min-width: min(100%, 420px);"
                                                     >
                                                         @csrf
@@ -1183,6 +1255,7 @@
                                                         </div>
 
                                                         <button type="submit" class="btn btn-primary btn-sm">
+                                                            <i class="ti ti-device-floppy me-1" aria-hidden="true"></i>
                                                             Update
                                                         </button>
                                                     </form>
@@ -1196,6 +1269,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="ti ti-trash me-1" aria-hidden="true"></i>
                                                         Delete
                                                     </button>
                                                 </form>
@@ -1204,14 +1278,14 @@
                                     </div>
                                 </div>
                             @empty
-                                <div class="border rounded-2 p-3 text-secondary">
+                                <div class="incident-empty-state border rounded-2 p-3 text-secondary">
                                     No response actions have been recorded yet.
                                 </div>
                             @endforelse
                         </div>
 
                         @can('response-action.manage')
-                            <div class="border rounded-2 p-3 flex-fill" style="max-width: 420px;">
+                            <div class="incident-panel-body border rounded-2 p-3 flex-fill" style="max-width: 420px;">
                                 <h3 class="h6 mb-3">Add Response Action</h3>
 
                                 <form
@@ -1317,6 +1391,7 @@
                                     </div>
 
                                     <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-plus me-1" aria-hidden="true"></i>
                                         Add Response Action
                                     </button>
                                 </form>
@@ -1328,15 +1403,21 @@
         @endcan
 
         <div class="col-lg-7">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Description</h2>
+            <div class="incident-panel incident-page-card incident-text-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-file-description me-1" aria-hidden="true"></i>
+                    Description
+                </h2>
                 <p class="mb-0" style="white-space: pre-line;">{{ $incident->description }}</p>
             </div>
         </div>
 
         <div class="col-lg-5">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Impact Summary</h2>
+            <div class="incident-panel incident-page-card incident-text-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-chart-bar me-1" aria-hidden="true"></i>
+                    Impact Summary
+                </h2>
                 <p class="mb-0" style="white-space: pre-line;">{{ $incident->impact_summary ?: 'Not provided' }}</p>
             </div>
         </div>
