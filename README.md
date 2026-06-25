@@ -6,6 +6,20 @@ Cyber Security Incident Management – Laravel is a production-style Laravel 12 
 
 The system supports incident taxonomy, analyst assignment, investigation notes, IOC management, evidence and attachment tracking, response actions, status workflow, audit logs, dashboards, and security reports. It is designed as a portfolio-ready Laravel application for backend, full-stack, and security-focused development roles.
 
+## Screenshots
+
+### Login
+
+<p align="center">
+  <img src="docs/screenshots/cyber-login.png" alt="Cyber Security Incident Management Laravel login screenshot" width="900">
+</p>
+
+### Dashboard
+
+<p align="center">
+  <img src="docs/screenshots/cyber-dashboard.png" alt="Cyber Security Incident Management Laravel dashboard screenshot" width="900">
+</p>
+
 ## Tech Stack
 
 - PHP 8.x
