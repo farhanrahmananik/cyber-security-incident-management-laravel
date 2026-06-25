@@ -8,22 +8,27 @@
         $summary = $reportData['summary'];
         $options = $reportData['filter_options'];
         $summaryCards = [
-            ['key' => 'total_incidents', 'label' => 'Total Incidents', 'description' => 'Incidents matching the selected filters.'],
-            ['key' => 'open_incidents', 'label' => 'Open Incidents', 'description' => 'Incidents not resolved or closed.'],
-            ['key' => 'closed_incidents', 'label' => 'Closed Incidents', 'description' => 'Resolved or closed incidents.'],
-            ['key' => 'critical_incidents', 'label' => 'Critical Incidents', 'description' => 'Incidents classified as critical severity.'],
+            ['key' => 'total_incidents', 'label' => 'Total Incidents', 'description' => 'Incidents matching the selected filters.', 'icon' => 'ti ti-shield-search'],
+            ['key' => 'open_incidents', 'label' => 'Open Incidents', 'description' => 'Incidents not resolved or closed.', 'icon' => 'ti ti-activity'],
+            ['key' => 'closed_incidents', 'label' => 'Closed Incidents', 'description' => 'Resolved or closed incidents.', 'icon' => 'ti ti-circle-check'],
+            ['key' => 'critical_incidents', 'label' => 'Critical Incidents', 'description' => 'Incidents classified as critical severity.', 'icon' => 'ti ti-alert-triangle'],
         ];
     @endphp
 
     <div class="row g-4">
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
-                <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                    <div>
-                        <h2 class="h5 mb-1">Security Reports</h2>
-                        <p class="text-secondary mb-0">
-                            Summarized incident data for operational review and security reporting.
-                        </p>
+            <div class="report-page-card report-filter-card bg-white border rounded-2 p-4">
+                <div class="report-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="report-card-icon" aria-hidden="true">
+                            <i class="ti ti-report-analytics"></i>
+                        </span>
+                        <div>
+                            <h2 class="h5 mb-1">Security Reports</h2>
+                            <p class="text-secondary mb-0">
+                                Summarized incident data for operational review and security reporting.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -132,9 +137,15 @@
                     </div>
 
                     <div class="col-md-3 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-primary">Apply Filters</button>
-                        <a href="{{ route('reports.security.index') }}" class="btn btn-outline-secondary">Reset</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-filter me-1" aria-hidden="true"></i>
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('reports.security.index') }}" class="btn btn-outline-secondary">
+                            Reset
+                        </a>
                         <a href="{{ route('reports.security.export', request()->query()) }}" class="btn btn-outline-primary">
+                            <i class="ti ti-download me-1" aria-hidden="true"></i>
                             Export CSV
                         </a>
                     </div>
@@ -144,8 +155,13 @@
 
         @foreach ($summaryCards as $summaryCard)
             <div class="col-md-6 col-xl-3">
-                <div class="bg-white border rounded-2 p-4 h-100">
-                    <p class="text-secondary mb-1">{{ $summaryCard['label'] }}</p>
+                <div class="report-summary-card bg-white border rounded-2 p-4 h-100">
+                    <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                        <p class="text-secondary mb-0">{{ $summaryCard['label'] }}</p>
+                        <span class="report-card-icon report-card-icon-sm" aria-hidden="true">
+                            <i class="{{ $summaryCard['icon'] }}"></i>
+                        </span>
+                    </div>
                     <p class="display-6 fw-semibold mb-2">
                         <span data-report-summary="{{ $summaryCard['key'] }}">
                             {{ number_format($summary[$summaryCard['key']]) }}
@@ -157,38 +173,53 @@
         @endforeach
 
         <div class="col-lg-6 col-xl-3">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Incidents by Status</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-list-details me-1" aria-hidden="true"></i>
+                    Incidents by Status
+                </h2>
                 @include('reports.security.partials.breakdown-table', ['rows' => $reportData['incidents_by_status'], 'emptyMessage' => 'No status data available.'])
             </div>
         </div>
 
         <div class="col-lg-6 col-xl-3">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Incidents by Severity</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>
+                    Incidents by Severity
+                </h2>
                 @include('reports.security.partials.breakdown-table', ['rows' => $reportData['incidents_by_severity'], 'emptyMessage' => 'No severity data available.'])
             </div>
         </div>
 
         <div class="col-lg-6 col-xl-3">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Incidents by Priority</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-flag-3 me-1" aria-hidden="true"></i>
+                    Incidents by Priority
+                </h2>
                 @include('reports.security.partials.breakdown-table', ['rows' => $reportData['incidents_by_priority'], 'emptyMessage' => 'No priority data available.'])
             </div>
         </div>
 
         <div class="col-lg-6 col-xl-3">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Incidents by Category</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-category me-1" aria-hidden="true"></i>
+                    Incidents by Category
+                </h2>
                 @include('reports.security.partials.breakdown-table', ['rows' => $reportData['incidents_by_category'], 'emptyMessage' => 'No category data available.'])
             </div>
         </div>
 
         <div class="col-xl-5">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Analyst Workload</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-users me-1" aria-hidden="true"></i>
+                    Analyst Workload
+                </h2>
 
-                <div class="table-responsive">
+                <div class="report-table-shell table-responsive">
                     <table class="table table-striped align-middle mb-0">
                         <thead>
                             <tr>
@@ -207,7 +238,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="2" class="text-secondary">
+                                    <td colspan="2" class="text-secondary py-4">
                                         No assigned analyst workload is available for these filters.
                                     </td>
                                 </tr>
@@ -219,10 +250,13 @@
         </div>
 
         <div class="col-xl-7">
-            <div class="bg-white border rounded-2 p-4 h-100">
-                <h2 class="h5 mb-3">Recent Incidents</h2>
+            <div class="report-page-card bg-white border rounded-2 p-4 h-100">
+                <h2 class="h5 mb-3">
+                    <i class="ti ti-clock-search me-1" aria-hidden="true"></i>
+                    Recent Incidents
+                </h2>
 
-                <div class="table-responsive">
+                <div class="report-table-shell table-responsive">
                     <table class="table table-striped align-middle data-table mb-0">
                         <thead>
                             <tr>
@@ -241,7 +275,7 @@
                                     <td>
                                         @can('incident.view')
                                             <a href="{{ route('incidents.show', $incident) }}">
-                                                {{ $incident->incident_number }}
+                                                <code class="incident-code">{{ $incident->incident_number }}</code>
                                             </a>
                                         @else
                                             {{ $incident->incident_number }}
@@ -249,7 +283,7 @@
                                     </td>
                                     <td>{{ $incident->title }}</td>
                                     <td>
-                                        <span class="badge text-bg-info">
+                                        <span class="incident-status-badge badge text-bg-info">
                                             {{ str($incident->status)->replace('_', ' ')->title() }}
                                         </span>
                                     </td>
@@ -260,7 +294,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-secondary">
+                                    <td colspan="7" class="text-secondary py-4">
                                         No recent incidents match the selected filters.
                                     </td>
                                 </tr>

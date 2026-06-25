@@ -20,13 +20,18 @@
 
     <div class="row g-4">
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
-                <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
-                    <div>
-                        <h2 class="h5 mb-1">Audit Logs</h2>
-                        <p class="text-secondary mb-0">
-                            Read-only security activity history for accountability, investigation, and review.
-                        </p>
+            <div class="audit-page-card audit-filter-card bg-white border rounded-2 p-4">
+                <div class="audit-card-header d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="audit-card-icon" aria-hidden="true">
+                            <i class="ti ti-filter"></i>
+                        </span>
+                        <div>
+                            <h2 class="h5 mb-1">Audit Logs</h2>
+                            <p class="text-secondary mb-0">
+                                Read-only security activity history for accountability, investigation, and review.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -135,25 +140,35 @@
                     </div>
 
                     <div class="col-md-12 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-primary">Filter</button>
-                        <a href="{{ route('audit-logs.index') }}" class="btn btn-outline-secondary">Reset</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-filter me-1" aria-hidden="true"></i>
+                            Filter
+                        </button>
+                        <a href="{{ route('audit-logs.index') }}" class="btn btn-outline-secondary">
+                            Reset
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="col-12">
-            <div class="bg-white border rounded-2 p-4">
-                <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                    <div>
-                        <h2 class="h5 mb-1">Security Activity</h2>
-                        <p class="text-secondary mb-0">
-                            Audit entries are append-only and cannot be edited or deleted from this interface.
-                        </p>
+            <div class="audit-page-card bg-white border rounded-2 p-4">
+                <div class="audit-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="audit-card-icon" aria-hidden="true">
+                            <i class="ti ti-clipboard-list"></i>
+                        </span>
+                        <div>
+                            <h2 class="h5 mb-1">Security Activity</h2>
+                            <p class="text-secondary mb-0">
+                                Audit entries are append-only and cannot be edited or deleted from this interface.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="table-responsive">
+                <div class="audit-table-shell table-responsive">
                     <table class="table table-striped align-middle mb-0">
                         <thead>
                             <tr>
@@ -183,7 +198,7 @@
                                         {{ $auditLog->created_at?->format('Y-m-d H:i') }}
                                     </td>
                                     <td>
-                                        <span class="badge text-bg-info" data-audit-event="{{ $auditLog->event }}">
+                                        <span class="audit-event-badge" data-audit-event="{{ $auditLog->event }}">
                                             {{ $auditLog->event }}
                                         </span>
                                     </td>
@@ -197,8 +212,13 @@
                                     </td>
                                     <td>
                                         @if ($auditLog->auditable_type || $auditLog->auditable_id)
-                                            <div class="small text-break">{{ $auditLog->auditable_type ?? 'Unknown' }}</div>
-                                            <div class="text-secondary small">ID: {{ $auditLog->auditable_id ?? 'N/A' }}</div>
+                                            <div class="audit-meta-grid">
+                                                <div class="small text-break">
+                                                    <i class="ti ti-database-search me-1" aria-hidden="true"></i>
+                                                    {{ $auditLog->auditable_type ?? 'Unknown' }}
+                                                </div>
+                                                <div class="text-secondary small">ID: {{ $auditLog->auditable_id ?? 'N/A' }}</div>
+                                            </div>
                                         @else
                                             <span class="text-secondary">Not linked</span>
                                         @endif
@@ -218,10 +238,16 @@
                                         @endif
 
                                         <details class="small mt-1">
-                                            <summary class="text-secondary">Value preview</summary>
-                                            <div class="mt-2">
-                                                <div><span class="fw-semibold">Old:</span> {{ $valuePreview($oldValues) }}</div>
-                                                <div><span class="fw-semibold">New:</span> {{ $valuePreview($newValues) }}</div>
+                                            <summary class="audit-details-summary text-secondary">Value preview</summary>
+                                            <div class="mt-2 audit-meta-grid">
+                                                <div>
+                                                    <span class="fw-semibold">Old:</span>
+                                                    <code class="audit-json-block">{{ $valuePreview($oldValues) }}</code>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold">New:</span>
+                                                    <code class="audit-json-block">{{ $valuePreview($newValues) }}</code>
+                                                </div>
                                             </div>
                                         </details>
                                     </td>
@@ -229,7 +255,15 @@
                             @empty
                                 <tr>
                                     <td colspan="7" class="text-center text-secondary py-5">
-                                        No audit logs match the selected filters.
+                                        <span class="setup-empty-state">
+                                            <span class="setup-empty-icon" aria-hidden="true">
+                                                <i class="ti ti-user-search"></i>
+                                            </span>
+                                            <span>
+                                                <span class="setup-empty-title d-block">No audit logs match the selected filters.</span>
+                                                <span class="setup-empty-copy d-block">Adjust the filters to review a broader activity window.</span>
+                                            </span>
+                                        </span>
                                     </td>
                                 </tr>
                             @endforelse
@@ -237,7 +271,7 @@
                     </table>
                 </div>
 
-                <div class="mt-3">
+                <div class="mt-3 audit-pagination">
                     {{ $auditLogs->links() }}
                 </div>
             </div>

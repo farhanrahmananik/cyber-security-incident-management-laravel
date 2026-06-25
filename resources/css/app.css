@@ -1493,6 +1493,141 @@ a:hover {
     line-height: 1.35;
 }
 
+.report-page-card,
+.audit-page-card {
+    position: relative;
+    overflow: hidden;
+    border-color: var(--app-border) !important;
+    background:
+        linear-gradient(145deg, rgb(77 171 247 / 5%), transparent 48%),
+        var(--app-surface) !important;
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 14%);
+}
+
+.report-filter-card,
+.audit-filter-card {
+    border-left: 3px solid rgb(77 171 247 / 68%) !important;
+}
+
+.report-card-header,
+.audit-card-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.report-card-icon,
+.audit-card-icon {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(77 171 247 / 28%);
+    border-radius: 0.875rem;
+    background:
+        linear-gradient(145deg, rgb(77 171 247 / 16%), rgb(77 171 247 / 6%)),
+        var(--app-surface-muted);
+    color: var(--app-primary-dark);
+}
+
+.report-card-icon-sm {
+    width: 2.35rem;
+    height: 2.35rem;
+}
+
+.report-summary-card {
+    position: relative;
+    overflow: hidden;
+    border-color: var(--app-border) !important;
+    background:
+        linear-gradient(145deg, rgb(77 171 247 / 6%), transparent 44%),
+        var(--app-surface) !important;
+    box-shadow: 0 1rem 2.25rem rgb(0 0 0 / 12%);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        background-color 160ms ease;
+}
+
+.report-summary-card:hover {
+    transform: translateY(-2px);
+    border-color: rgb(77 171 247 / 34%) !important;
+    background: var(--app-surface-hover) !important;
+}
+
+.report-table-shell,
+.audit-table-shell {
+    margin: 0 -0.25rem -0.25rem;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    background: rgb(16 23 34 / 34%);
+}
+
+.report-table-shell thead th,
+.audit-table-shell thead th {
+    color: var(--app-text-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.report-count-badge,
+.audit-event-badge {
+    display: inline-flex;
+    min-height: 1.625rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(77 171 247 / 24%);
+    border-radius: 999px;
+    background: var(--app-primary-soft);
+    color: var(--app-primary-dark);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.report-count-badge {
+    min-width: 2.25rem;
+    padding: 0.25rem 0.55rem;
+}
+
+.audit-event-badge {
+    max-width: 18rem;
+    padding: 0.35rem 0.65rem;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.audit-meta-grid {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.audit-json-block {
+    display: block;
+    margin-top: 0.25rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    background: rgb(8 15 26 / 45%);
+    color: #91caff;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.audit-details-summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.audit-pagination {
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--app-border);
+}
+
 @media (max-width: 767.98px) {
     .app-topbar {
         align-items: flex-start;
