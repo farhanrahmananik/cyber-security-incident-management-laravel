@@ -7,14 +7,14 @@
         $dashboardUser = auth()->user();
         $metrics = $dashboardData['metrics'];
         $metricCards = [
-            ['key' => 'total_incidents', 'label' => 'Total Incidents', 'description' => 'Visible incidents in your dashboard scope.'],
-            ['key' => 'active_incidents', 'label' => 'Active Incidents', 'description' => 'Incidents not resolved or closed.'],
-            ['key' => 'unassigned_incidents', 'label' => 'Unassigned Incidents', 'description' => 'Incidents without a current analyst.'],
-            ['key' => 'resolved_incidents', 'label' => 'Resolved Incidents', 'description' => 'Resolved or closed incidents.'],
-            ['key' => 'total_investigation_notes', 'label' => 'Investigation Notes', 'description' => 'SOC notes linked to visible incidents.'],
-            ['key' => 'total_iocs', 'label' => 'IOCs', 'description' => 'Indicators recorded for visible incidents.'],
-            ['key' => 'total_evidence_items', 'label' => 'Evidence Items', 'description' => 'Evidence metadata linked to visible incidents.'],
-            ['key' => 'total_response_actions', 'label' => 'Response Actions', 'description' => 'Response work tracked for visible incidents.'],
+            ['key' => 'total_incidents', 'label' => 'Total Incidents', 'description' => 'Visible incidents in your dashboard scope.', 'icon' => 'ti ti-shield-search'],
+            ['key' => 'active_incidents', 'label' => 'Active Incidents', 'description' => 'Incidents not resolved or closed.', 'icon' => 'ti ti-activity'],
+            ['key' => 'unassigned_incidents', 'label' => 'Unassigned Incidents', 'description' => 'Incidents without a current analyst.', 'icon' => 'ti ti-user-question'],
+            ['key' => 'resolved_incidents', 'label' => 'Resolved Incidents', 'description' => 'Resolved or closed incidents.', 'icon' => 'ti ti-circle-check'],
+            ['key' => 'total_investigation_notes', 'label' => 'Investigation Notes', 'description' => 'SOC notes linked to visible incidents.', 'icon' => 'ti ti-notes'],
+            ['key' => 'total_iocs', 'label' => 'IOCs', 'description' => 'Indicators recorded for visible incidents.', 'icon' => 'ti ti-radar'],
+            ['key' => 'total_evidence_items', 'label' => 'Evidence Items', 'description' => 'Evidence metadata linked to visible incidents.', 'icon' => 'ti ti-file-search'],
+            ['key' => 'total_response_actions', 'label' => 'Response Actions', 'description' => 'Response work tracked for visible incidents.', 'icon' => 'ti ti-heartbeat'],
         ];
     @endphp
 
@@ -42,8 +42,13 @@
 
         @foreach ($metricCards as $metricCard)
             <div class="col-md-6 col-xl-3">
-                <div class="bg-white border rounded-2 p-4 h-100">
-                    <p class="text-secondary mb-1">{{ $metricCard['label'] }}</p>
+                <div class="dashboard-metric-card bg-white border rounded-2 p-4 h-100">
+                    <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                        <p class="text-secondary mb-0">{{ $metricCard['label'] }}</p>
+                        <span class="dashboard-metric-icon" aria-hidden="true">
+                            <i class="{{ $metricCard['icon'] }}"></i>
+                        </span>
+                    </div>
                     <p
                         class="display-6 fw-semibold mb-2"
                         data-dashboard-metric="{{ $metricCard['key'] }}"

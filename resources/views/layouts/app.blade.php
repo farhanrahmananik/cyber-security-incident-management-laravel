@@ -1,11 +1,17 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-bs-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Dashboard') | Cyber Security Incident Management</title>
+
+    <script>
+        (function () {
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
+        })();
+    </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -16,7 +22,7 @@
         </aside>
 
         <div
-            class="offcanvas offcanvas-start"
+            class="offcanvas offcanvas-start app-mobile-sidebar"
             tabindex="-1"
             id="mobileSidebar"
             aria-labelledby="mobileSidebarLabel"
@@ -36,13 +42,21 @@
             @include('layouts.partials.topbar')
 
             <main class="app-content">
-                <div class="container-fluid">
-                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-4">
+                <div class="app-content-container">
+                    <div class="app-page-header">
                         <div>
-                            <p class="text-secondary mb-1">Cyber Security Incident Management</p>
-                            <h1 class="h3 mb-0">@yield('title', 'Dashboard')</h1>
+                            <p class="app-page-eyebrow">Cyber Security Incident Management</p>
+                            <h1 class="app-page-title">
+                                @hasSection('page-title')
+                                    @yield('page-title')
+                                @else
+                                    @yield('title', 'Dashboard')
+                                @endif
+                            </h1>
                         </div>
-                        @yield('page-actions')
+                        <div class="app-page-actions">
+                            @yield('page-actions')
+                        </div>
                     </div>
 
                     @if (session('success'))

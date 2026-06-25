@@ -134,9 +134,23 @@
                 </thead>
                 <tbody>
                     @forelse ($severityLevels as $severityLevel)
+                        @php
+                            $severitySlug = strtolower((string) $severityLevel->slug);
+                            $severityBadgeClass = match ($severitySlug) {
+                                'low' => 'severity-badge-low',
+                                'medium' => 'severity-badge-medium',
+                                'high' => 'severity-badge-high',
+                                'critical' => 'severity-badge-critical',
+                                default => 'severity-badge-default',
+                            };
+                        @endphp
                         <tr>
-                            <td class="fw-semibold">{{ $severityLevel->name }}</td>
-                            <td><code>{{ $severityLevel->slug }}</code></td>
+                            <td class="fw-semibold">
+                                <span class="severity-badge {{ $severityBadgeClass }}">
+                                    {{ $severityLevel->name }}
+                                </span>
+                            </td>
+                            <td><code class="setup-code">{{ $severityLevel->slug }}</code></td>
                             <td>{{ $severityLevel->description ?: 'Not provided' }}</td>
                             <td>
                                 @if ($severityLevel->color)

@@ -399,6 +399,26 @@ a:hover {
         color 160ms ease;
 }
 
+.sidebar-link,
+.sidebar-link:hover,
+.sidebar-link:focus,
+.sidebar-link:active,
+.sidebar-link:visited,
+.sidebar-link *,
+.sidebar-link:hover *,
+.sidebar-link:focus *,
+.sidebar-link:active *,
+.sidebar-link:visited * {
+    text-decoration: none !important;
+}
+
+.sidebar-link:focus-visible {
+    outline: 2px solid rgb(116 192 252 / 72%);
+    outline-offset: 2px;
+    background: var(--app-primary-soft);
+    border-color: rgb(77 171 247 / 34%);
+}
+
 .sidebar-link-content {
     display: inline-flex;
     min-width: 0;
@@ -704,6 +724,53 @@ a:hover {
     transform: translateY(-2px);
     border-color: rgb(77 171 247 / 34%) !important;
     background: var(--app-surface-hover) !important;
+}
+
+.dashboard-metric-card {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        background-color 160ms ease;
+}
+
+.dashboard-metric-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(145deg, rgb(77 171 247 / 7%), transparent 44%);
+}
+
+.dashboard-metric-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-metric-card:hover {
+    transform: translateY(-2px);
+    border-color: rgb(77 171 247 / 34%) !important;
+    background: var(--app-surface-hover) !important;
+}
+
+.dashboard-metric-icon {
+    display: inline-flex;
+    width: 2.4rem;
+    height: 2.4rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(77 171 247 / 28%);
+    border-radius: 0.875rem;
+    background:
+        linear-gradient(145deg, rgb(77 171 247 / 16%), rgb(77 171 247 / 6%)),
+        var(--app-surface-muted);
+    color: var(--app-primary-dark);
+}
+
+.dashboard-metric-icon .ti {
+    font-size: 1.2rem;
 }
 
 .dashboard-card-icon,
@@ -1158,6 +1225,83 @@ a:hover {
 
 .setup-modal .modal-body {
     background: rgb(16 23 34 / 26%);
+}
+
+.severity-badge {
+    display: inline-flex;
+    min-height: 1.875rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.severity-badge-low {
+    border-color: rgb(81 207 102 / 34%);
+    background: var(--app-success-soft);
+    color: #b2f2bb;
+}
+
+.severity-badge-medium {
+    border-color: rgb(255 212 59 / 36%);
+    background: var(--app-warning-soft);
+    color: #ffec99;
+}
+
+.severity-badge-high {
+    border-color: rgb(255 146 43 / 38%);
+    background: #3a2414;
+    color: #ffd8a8;
+}
+
+.severity-badge-critical {
+    border-color: rgb(250 82 82 / 42%);
+    background: var(--app-danger-soft);
+    color: #ffc9c9;
+}
+
+.severity-badge-default {
+    border-color: rgb(154 168 187 / 28%);
+    background: var(--app-surface-muted);
+    color: var(--app-text-muted);
+}
+
+.permission-group-card {
+    border-color: var(--app-border) !important;
+    background:
+        linear-gradient(145deg, rgb(77 171 247 / 4%), transparent 42%),
+        rgb(16 23 34 / 34%);
+}
+
+.permission-option {
+    min-height: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.25rem;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    background: rgb(16 23 34 / 32%);
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease;
+}
+
+.permission-option:hover {
+    border-color: rgb(77 171 247 / 32%);
+    background: var(--app-surface-muted);
+}
+
+.permission-option .form-check-input {
+    margin-left: -1.45rem;
+}
+
+.permission-option .form-check-label {
+    color: var(--app-text);
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 @media (max-width: 767.98px) {

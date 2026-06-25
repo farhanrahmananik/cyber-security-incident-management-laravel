@@ -106,14 +106,14 @@
                     </div>
 
                     @forelse ($permissionsByGroup as $groupName => $permissions)
-                        <div class="border rounded-2 p-3 mb-3">
+                        <div class="permission-group-card border rounded-2 p-3 mb-3">
                             <h3 class="h6 text-uppercase text-secondary mb-3">
                                 {{ str($groupName)->replace(['-', '_'], ' ')->title() }}
                             </h3>
                             <div class="row g-2">
                                 @foreach ($permissions as $permission)
                                     <div class="col-sm-6 col-lg-4">
-                                        <div class="form-check">
+                                        <div class="permission-option form-check">
                                             <input
                                                 id="create_permission_{{ $permission->id }}"
                                                 name="permission_ids[]"
@@ -127,7 +127,6 @@
                                                 class="form-check-label"
                                             >
                                                 {{ $permission->name }}
-                                                <span class="text-secondary small d-block">{{ $permission->slug }}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -344,14 +343,14 @@
                                         </div>
 
                                         @forelse ($permissionsByGroup as $groupName => $permissions)
-                                            <div class="border rounded-2 p-3 mb-3">
+                                            <div class="permission-group-card border rounded-2 p-3 mb-3">
                                                 <h3 class="h6 text-uppercase text-secondary mb-3">
                                                     {{ str($groupName)->replace(['-', '_'], ' ')->title() }}
                                                 </h3>
                                                 <div class="row g-2">
                                                     @foreach ($permissions as $permission)
                                                         <div class="col-sm-6 col-lg-4">
-                                                            <div class="form-check">
+                                                            <div class="permission-option form-check">
                                                                 <input
                                                                     id="role_{{ $role->id }}_permission_{{ $permission->id }}"
                                                                     name="permission_ids[]"
@@ -365,9 +364,6 @@
                                                                     class="form-check-label"
                                                                 >
                                                                     {{ $permission->name }}
-                                                                    <span class="text-secondary small d-block">
-                                                                        {{ $permission->slug }}
-                                                                    </span>
                                                                 </label>
                                                             </div>
                                                         </div>
