@@ -1,66 +1,181 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Cyber Security Incident Management – Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Short Project Summary
 
-## About Laravel
+Cyber Security Incident Management – Laravel is a production-style Laravel 12 platform for reporting, triaging, assigning, investigating, and tracking cyber security incidents.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The system supports incident taxonomy, analyst assignment, investigation notes, IOC management, evidence and attachment tracking, response actions, status workflow, audit logs, dashboards, and security reports. It is designed as a portfolio-ready Laravel application for backend, full-stack, and security-focused development roles.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.x
+- Laravel 12
+- MySQL
+- Bootstrap 5
+- Tabler UI
+- jQuery
+- DataTables
+- SweetAlert2
+- Vite
+- Git / GitHub
 
-## Learning Laravel
+## Key Features
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Authentication & Access Control
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Session-based authentication with protected application routes, guest redirects, logout handling, and permission-gated access to core modules.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Custom RBAC
 
-## Laravel Sponsors
+Custom role and permission foundation with Gates, middleware, Super Admin override behavior, role assignment, permission sync, and guardrails for privileged roles.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### User Management
 
-### Premium Partners
+Administrative user management with role assignment, activation/deactivation workflows, and protections against unsafe Super Admin changes.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### Incident Taxonomy
 
-## Contributing
+Management screens for incident categories, severity levels, and priority levels used to classify and prioritize incident reports.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Incident Reporting
 
-## Code of Conduct
+Incident creation, listing, viewing, editing, and protected visibility based on role and permission rules.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Assignment Workflow
 
-## Security Vulnerabilities
+Dedicated incident analyst assignment workflow with assignment history and restrictions around eligible assignees.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Investigation Notes
 
-## License
+Internal SOC note tracking for incident triage, analysis, and response documentation.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### IOC Management
+
+Incident-linked Indicators of Compromise including IP addresses, domains, URLs, file hashes, email addresses, malware filenames, process names, registry keys, and other IOC types.
+
+### Evidence / Attachment Tracking
+
+Private incident evidence metadata tracking with upload/download workflows, file metadata, SHA-256 checksum display, and permission-gated access.
+
+### Response Actions
+
+Incident response action tracking for containment, eradication, recovery, communication, monitoring, lessons learned, and other response work.
+
+### Incident Status Workflow
+
+Dedicated status transition workflow with controlled status changes, transition history, notes, and close-permission restrictions.
+
+### Audit Logs
+
+Read-only audit log module for important management and incident workflows, with filtering and safe value previews.
+
+### Security Reports
+
+Filtered security reporting page with summary metrics, breakdown tables, analyst workload, recent incidents, and CSV export.
+
+### Dashboard
+
+Role-aware dashboard metrics calculated from real incident data.
+
+### Tabler Dark Mode UI
+
+Dark-only Bootstrap/Tabler-inspired UI with polished layouts for authentication, dashboard, management pages, incident workflows, reports, and audit logs.
+
+## User Roles
+
+- **Super Admin**: Full system-level access through global authorization override and protected administrative guardrails.
+- **Security Manager**: Operational management role for incident oversight, assignments, reporting, setup data, and security workflows.
+- **SOC Analyst**: Security operations role for assigned incident work, investigation notes, IOCs, evidence, and response actions.
+- **Reporter / Employee**: Limited reporting role for submitting incidents and viewing permitted incident information.
+
+## Architecture Highlights
+
+- Thin controllers where possible.
+- Form Requests for validation.
+- Service classes for business workflows and transaction-backed operations.
+- Eloquent relationships across users, roles, permissions, incidents, assignments, notes, IOCs, evidence, response actions, status transitions, audit logs, and reports.
+- Custom RBAC middleware and Gates.
+- Audit logging for important workflows.
+- Permission-gated UI and route access.
+- Soft delete or deactivation patterns where appropriate.
+
+## Security Highlights
+
+- Guest route protection for authenticated application pages.
+- Permission-based authorization across modules.
+- Super Admin guardrails.
+- Last active Super Admin protection.
+- Reporter data visibility restrictions.
+- Analyst assignment restrictions.
+- Status transition restrictions.
+- Evidence access restrictions.
+- Sensitive values are not exposed in audit logs where applicable.
+
+## Testing & Verification
+
+Latest verified result:
+
+- `npm run build`: passed
+- `php artisan test`: passed
+- 341 tests passed
+- 1364 assertions passed
+
+The test suite covers authentication, authorization middleware, RBAC foundation, user management, role permission management, incident setup modules, incident reporting, incident assignment, investigation notes, IOC workflow, evidence workflow, response actions, incident status workflow, dashboard metrics, security reports, audit logs, route access regression, and UI navigation visibility.
+
+## Local Installation
+
+Example local setup using PowerShell on Windows:
+
+```powershell
+cd E:\laravel-projects
+git clone <repository-url>
+cd cyber-security-incident-management-laravel
+
+composer install
+npm install
+
+Copy-Item .env.example .env
+php artisan key:generate
+```
+
+Configure the database values in `.env` for your local MySQL setup, then run:
+
+```powershell
+php artisan migrate --seed
+npm run dev
+php artisan serve
+```
+
+The local application will typically be available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Default Access / Seeded Users
+
+Check the database seeders for the latest seeded development credentials.
+
+For security and accuracy, this README does not hardcode development passwords.
+
+## Documentation Links
+
+- [Final Project Audit](docs/final-project-audit.md)
+- [Database Design](docs/database/database-design.md)
+- [Entity Relationship Diagram](docs/database/erd.md)
+- [Migration Plan](docs/database/migration-plan.md)
+- [Schema Blueprint](docs/database/schema-blueprint.md)
+- [Testing Strategy](docs/testing/testing-strategy.md)
+- [Security Reports Module Documentation](docs/modules/security-reports.md)
+- [Navigation Implementation Audit](docs/final-audit/navigation-implementation-audit.md)
+
+## Project Status
+
+- Core modules completed.
+- UI Upgrade Tabler Dark Mode completed.
+- Final verification passed.
+- Documentation polish completed.
+
+## Portfolio Note
+
+This project demonstrates Laravel backend architecture, custom RBAC, incident workflow design, auditability, reporting, file metadata handling, and security-focused full-stack development in a practical cyber security incident management domain.
