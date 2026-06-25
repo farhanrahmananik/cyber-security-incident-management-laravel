@@ -15,13 +15,18 @@
     @endif
 
     @can('user.create')
-        <div class="bg-white border rounded-2 p-4 mb-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                <div>
-                    <h2 class="h5 mb-1">Create User</h2>
-                    <p class="text-secondary mb-0">
-                        Add an active application user and assign existing RBAC roles.
-                    </p>
+        <div class="management-page-card management-create-card bg-white border rounded-2 p-4 mb-4">
+            <div class="management-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="setup-card-icon" aria-hidden="true">
+                        <i class="ti ti-user-plus"></i>
+                    </span>
+                    <div>
+                        <h2 class="h5 mb-1">Create User</h2>
+                        <p class="text-secondary mb-0">
+                            Add an active application user and assign existing RBAC roles.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -36,7 +41,7 @@
                         ->all();
                 @endphp
 
-                <form method="POST" action="{{ route('users.store') }}" class="row g-3">
+                <form method="POST" action="{{ route('users.store') }}" class="management-form row g-3">
                     @csrf
 
                     <div class="col-md-6">
@@ -103,13 +108,13 @@
                         <div class="row g-2">
                             @foreach ($roles as $role)
                                 <div class="col-sm-6 col-lg-4">
-                                    <div class="form-check border rounded-2 px-3 py-2">
+                                    <div class="permission-option form-check">
                                         <input
                                             id="create_role_{{ $role->id }}"
                                             name="role_ids[]"
                                             type="checkbox"
                                             value="{{ $role->id }}"
-                                            class="form-check-input ms-0 me-2"
+                                            class="form-check-input"
                                             @checked(in_array((int) $role->id, $selectedCreateRoles, true))
                                         >
                                         <label for="create_role_{{ $role->id }}" class="form-check-label">
@@ -150,18 +155,23 @@
         </div>
     @endcan
 
-    <div class="bg-white border rounded-2 p-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-            <div>
-                <h2 class="h5 mb-1">Application Users</h2>
-                <p class="text-secondary mb-0">
-                    Manage user accounts, role assignment, and account activation status.
-                </p>
+    <div class="management-page-card bg-white border rounded-2 p-4">
+        <div class="management-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="setup-card-icon" aria-hidden="true">
+                    <i class="ti ti-users-group"></i>
+                </span>
+                <div>
+                    <h2 class="h5 mb-1">Application Users</h2>
+                    <p class="text-secondary mb-0">
+                        Manage user accounts, role assignment, and account activation status.
+                    </p>
+                </div>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table id="users-table" class="table table-striped align-middle data-table mb-0">
+        <div class="management-table-shell table-responsive">
+            <table id="users-table" class="management-table table table-striped align-middle data-table mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -180,7 +190,7 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @forelse ($managedUser->roles as $role)
-                                        <span class="badge text-bg-light border">{{ $role->name }}</span>
+                                        <span class="setup-meta-badge badge text-bg-light border">{{ $role->name }}</span>
                                     @empty
                                         <span class="text-secondary">No roles</span>
                                     @endforelse
@@ -188,14 +198,14 @@
                             </td>
                             <td>
                                 @if ($managedUser->is_active)
-                                    <span class="badge text-bg-success">Active</span>
+                                    <span class="status-badge status-badge-active">Active</span>
                                 @else
-                                    <span class="badge text-bg-secondary">Inactive</span>
+                                    <span class="status-badge status-badge-inactive">Inactive</span>
                                 @endif
                             </td>
                             <td>{{ $managedUser->created_at?->format('Y-m-d') }}</td>
                             <td class="text-end">
-                                <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                                <div class="management-action-group d-inline-flex flex-wrap justify-content-end gap-2">
                                     @can('user.update')
                                         <button
                                             type="button"
@@ -203,6 +213,7 @@
                                             data-bs-toggle="modal"
                                             data-bs-target="#editUser{{ $managedUser->id }}"
                                         >
+                                            <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                             Edit
                                         </button>
 
@@ -215,6 +226,7 @@
                                                     class="btn btn-outline-success btn-sm"
                                                     onclick="return confirm('Activate this user account?')"
                                                 >
+                                                    <i class="ti ti-circle-check me-1" aria-hidden="true"></i>
                                                     Activate
                                                 </button>
                                             </form>
@@ -231,11 +243,15 @@
                                                     class="btn btn-outline-danger btn-sm"
                                                     onclick="return confirm('Deactivate this user account?')"
                                                 >
+                                                    <i class="ti ti-circle-off me-1" aria-hidden="true"></i>
                                                     Deactivate
                                                 </button>
                                             </form>
                                         @elseif ($managedUser->is(auth()->user()))
-                                            <span class="btn btn-outline-secondary btn-sm disabled">Current User</span>
+                                            <span class="btn btn-outline-secondary btn-sm disabled">
+                                                <i class="ti ti-user-check me-1" aria-hidden="true"></i>
+                                                Current User
+                                            </span>
                                         @endif
                                     @endcan
                                 </div>
@@ -244,7 +260,15 @@
                     @empty
                         <tr>
                             <td colspan="6" class="text-center text-secondary py-4">
-                                No users have been created yet.
+                                <span class="setup-empty-state">
+                                    <span class="setup-empty-icon" aria-hidden="true">
+                                        <i class="ti ti-user-plus"></i>
+                                    </span>
+                                    <span>
+                                        <span class="setup-empty-title d-block">No users have been created yet.</span>
+                                        <span class="setup-empty-copy d-block">Create users to assign roles and application access.</span>
+                                    </span>
+                                </span>
                             </td>
                         </tr>
                     @endforelse
@@ -268,7 +292,7 @@
             @endphp
 
             <div
-                class="modal fade"
+                class="modal fade setup-modal"
                 id="editUser{{ $managedUser->id }}"
                 tabindex="-1"
                 aria-labelledby="editUserLabel{{ $managedUser->id }}"
@@ -347,13 +371,13 @@
                                         <div class="row g-2">
                                             @foreach ($roles as $role)
                                                 <div class="col-sm-6 col-lg-4">
-                                                    <div class="form-check border rounded-2 px-3 py-2">
+                                                    <div class="permission-option form-check">
                                                         <input
                                                             id="user_{{ $managedUser->id }}_role_{{ $role->id }}"
                                                             name="role_ids[]"
                                                             type="checkbox"
                                                             value="{{ $role->id }}"
-                                                            class="form-check-input ms-0 me-2"
+                                                            class="form-check-input"
                                                             @checked(in_array((int) $role->id, $selectedRoleIds, true))
                                                         >
                                                         <label

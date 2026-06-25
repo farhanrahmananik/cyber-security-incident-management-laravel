@@ -15,13 +15,18 @@
     @endif
 
     @can('role.create')
-        <div class="bg-white border rounded-2 p-4 mb-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                <div>
-                    <h2 class="h5 mb-1">Create Role</h2>
-                    <p class="text-secondary mb-0">
-                        Create an application role and assign existing system-defined permissions.
-                    </p>
+        <div class="management-page-card management-create-card bg-white border rounded-2 p-4 mb-4">
+            <div class="management-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="setup-card-icon" aria-hidden="true">
+                        <i class="ti ti-shield-plus"></i>
+                    </span>
+                    <div>
+                        <h2 class="h5 mb-1">Create Role</h2>
+                        <p class="text-secondary mb-0">
+                            Create an application role and assign existing system-defined permissions.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -31,7 +36,7 @@
                     ->all();
             @endphp
 
-            <form method="POST" action="{{ route('roles.store') }}" class="row g-3">
+            <form method="POST" action="{{ route('roles.store') }}" class="management-form row g-3">
                 @csrf
 
                 <div class="col-md-6">
@@ -154,18 +159,23 @@
         </div>
     @endcan
 
-    <div class="bg-white border rounded-2 p-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-            <div>
-                <h2 class="h5 mb-1">Roles</h2>
-                <p class="text-secondary mb-0">
-                    Manage application roles and their assigned permissions.
-                </p>
+    <div class="management-page-card bg-white border rounded-2 p-4">
+        <div class="management-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="setup-card-icon" aria-hidden="true">
+                    <i class="ti ti-shield-lock"></i>
+                </span>
+                <div>
+                    <h2 class="h5 mb-1">Roles</h2>
+                    <p class="text-secondary mb-0">
+                        Manage application roles and their assigned permissions.
+                    </p>
+                </div>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table id="roles-table" class="table table-striped align-middle data-table mb-0">
+        <div class="management-table-shell table-responsive">
+            <table id="roles-table" class="management-table table table-striped align-middle data-table mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -183,25 +193,28 @@
                             <td class="fw-semibold">
                                 {{ $role->name }}
                                 @if ($role->slug === 'super-admin')
-                                    <span class="badge text-bg-warning ms-1">Protected</span>
+                                    <span class="status-badge status-badge-warning ms-1">Protected</span>
                                 @endif
                             </td>
-                            <td><code>{{ $role->slug }}</code></td>
+                            <td><code class="setup-code">{{ $role->slug }}</code></td>
                             <td>{{ $role->description ?: 'Not provided' }}</td>
                             <td>
                                 @if ($role->is_active)
-                                    <span class="badge text-bg-success">Active</span>
+                                    <span class="status-badge status-badge-active">Active</span>
                                 @else
-                                    <span class="badge text-bg-secondary">Inactive</span>
+                                    <span class="status-badge status-badge-inactive">Inactive</span>
                                 @endif
                             </td>
                             <td>{{ $role->users_count }}</td>
                             <td>{{ $role->permissions->count() }}</td>
                             <td class="text-end">
                                 @if ($role->slug === 'super-admin')
-                                    <span class="btn btn-outline-secondary btn-sm disabled">System Role</span>
+                                    <span class="btn btn-outline-secondary btn-sm disabled">
+                                        <i class="ti ti-lock me-1" aria-hidden="true"></i>
+                                        System Role
+                                    </span>
                                 @else
-                                    <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                                    <div class="management-action-group d-inline-flex flex-wrap justify-content-end gap-2">
                                         @can('role.update')
                                             <button
                                                 type="button"
@@ -209,6 +222,7 @@
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#editRole{{ $role->id }}"
                                             >
+                                                <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                                 Edit
                                             </button>
 
@@ -221,6 +235,7 @@
                                                         class="btn btn-outline-success btn-sm"
                                                         onclick="return confirm('Activate this role?')"
                                                     >
+                                                        <i class="ti ti-circle-check me-1" aria-hidden="true"></i>
                                                         Activate
                                                     </button>
                                                 </form>
@@ -237,6 +252,7 @@
                                                         class="btn btn-outline-danger btn-sm"
                                                         onclick="return confirm('Deactivate this role?')"
                                                     >
+                                                        <i class="ti ti-circle-off me-1" aria-hidden="true"></i>
                                                         Deactivate
                                                     </button>
                                                 </form>
@@ -249,7 +265,15 @@
                     @empty
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
-                                No roles have been created yet.
+                                <span class="setup-empty-state">
+                                    <span class="setup-empty-icon" aria-hidden="true">
+                                        <i class="ti ti-shield-plus"></i>
+                                    </span>
+                                    <span>
+                                        <span class="setup-empty-title d-block">No roles have been created yet.</span>
+                                        <span class="setup-empty-copy d-block">Create roles to organize permission access.</span>
+                                    </span>
+                                </span>
                             </td>
                         </tr>
                     @endforelse
@@ -275,7 +299,7 @@
             @endphp
 
             <div
-                class="modal fade"
+                class="modal fade setup-modal"
                 id="editRole{{ $role->id }}"
                 tabindex="-1"
                 aria-labelledby="editRoleLabel{{ $role->id }}"

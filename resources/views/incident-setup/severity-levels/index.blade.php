@@ -15,15 +15,20 @@
     @endif
 
     @can('severity-level.manage')
-        <div class="bg-white border rounded-2 p-4 mb-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-                <div>
-                    <h2 class="h5 mb-1">Create Severity Level</h2>
-                    <p class="text-secondary mb-0">Define impact levels used to classify incident urgency and risk.</p>
+        <div class="setup-page-card setup-create-card bg-white border rounded-2 p-4 mb-4">
+            <div class="setup-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="setup-card-icon" aria-hidden="true">
+                        <i class="ti ti-alert-triangle"></i>
+                    </span>
+                    <div>
+                        <h2 class="h5 mb-1">Create Severity Level</h2>
+                        <p class="text-secondary mb-0">Define impact levels used to classify incident urgency and risk.</p>
+                    </div>
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('severity-levels.store') }}" class="row g-3">
+            <form method="POST" action="{{ route('severity-levels.store') }}" class="setup-form row g-3">
                 @csrf
 
                 <div class="col-md-6">
@@ -111,16 +116,21 @@
         </div>
     @endcan
 
-    <div class="bg-white border rounded-2 p-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
-            <div>
-                <h2 class="h5 mb-1">Severity Levels</h2>
-                <p class="text-secondary mb-0">Master data for incident impact classification.</p>
+    <div class="setup-page-card bg-white border rounded-2 p-4">
+        <div class="setup-card-header d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="setup-card-icon" aria-hidden="true">
+                    <i class="ti ti-shield-exclamation"></i>
+                </span>
+                <div>
+                    <h2 class="h5 mb-1">Severity Levels</h2>
+                    <p class="text-secondary mb-0">Master data for incident impact classification.</p>
+                </div>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table id="severity-levels-table" class="table table-striped align-middle data-table mb-0">
+        <div class="setup-table-shell table-responsive">
+            <table id="severity-levels-table" class="setup-table table table-striped align-middle data-table mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -154,7 +164,7 @@
                             <td>{{ $severityLevel->description ?: 'Not provided' }}</td>
                             <td>
                                 @if ($severityLevel->color)
-                                    <span class="badge text-bg-light border">{{ $severityLevel->color }}</span>
+                                    <span class="setup-meta-badge badge text-bg-light border">{{ $severityLevel->color }}</span>
                                 @else
                                     <span class="text-secondary">Not set</span>
                                 @endif
@@ -162,20 +172,21 @@
                             <td>{{ $severityLevel->sort_order }}</td>
                             <td>
                                 @if ($severityLevel->is_active)
-                                    <span class="badge text-bg-success">Active</span>
+                                    <span class="status-badge status-badge-active">Active</span>
                                 @else
-                                    <span class="badge text-bg-secondary">Inactive</span>
+                                    <span class="status-badge status-badge-inactive">Inactive</span>
                                 @endif
                             </td>
                             <td class="text-end">
                                 @can('severity-level.manage')
-                                    <div class="d-inline-flex justify-content-end gap-2">
+                                    <div class="setup-action-group d-inline-flex justify-content-end gap-2">
                                         <button
                                             type="button"
                                             class="btn btn-outline-primary btn-sm"
                                             data-bs-toggle="modal"
                                             data-bs-target="#editSeverityLevel{{ $severityLevel->id }}"
                                         >
+                                            <i class="ti ti-pencil me-1" aria-hidden="true"></i>
                                             Edit
                                         </button>
 
@@ -187,11 +198,15 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="ti ti-circle-off me-1" aria-hidden="true"></i>
                                                     Deactivate
                                                 </button>
                                             </form>
                                         @else
-                                            <span class="btn btn-outline-secondary btn-sm disabled">Inactive</span>
+                                            <span class="btn btn-outline-secondary btn-sm disabled">
+                                                <i class="ti ti-lock me-1" aria-hidden="true"></i>
+                                                Inactive
+                                            </span>
                                         @endif
                                     </div>
                                 @else
@@ -202,7 +217,15 @@
                     @empty
                         <tr>
                             <td colspan="7" class="text-center text-secondary py-4">
-                                No severity levels have been created yet.
+                                <span class="setup-empty-state">
+                                    <span class="setup-empty-icon" aria-hidden="true">
+                                        <i class="ti ti-alert-circle"></i>
+                                    </span>
+                                    <span>
+                                        <span class="setup-empty-title d-block">No severity levels have been created yet.</span>
+                                        <span class="setup-empty-copy d-block">Create severity levels to classify incident impact.</span>
+                                    </span>
+                                </span>
                             </td>
                         </tr>
                     @endforelse
@@ -214,7 +237,7 @@
     @can('severity-level.manage')
         @foreach ($severityLevels as $severityLevel)
             <div
-                class="modal fade"
+                class="modal fade setup-modal"
                 id="editSeverityLevel{{ $severityLevel->id }}"
                 tabindex="-1"
                 aria-labelledby="editSeverityLevelLabel{{ $severityLevel->id }}"
