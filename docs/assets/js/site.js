@@ -5,9 +5,11 @@
   var toggle = document.getElementById("navToggle");
   var nav = document.getElementById("primaryNav");
   var dialog = document.getElementById("imageDialog");
+  var toTopButton = document.getElementById("toTopButton");
 
   function updateHeader() {
     if (header) header.classList.toggle("is-scrolled", window.scrollY > 12);
+    if (toTopButton) toTopButton.classList.toggle("is-shown", window.scrollY > 520);
   }
 
   function closeNav() {
@@ -64,6 +66,14 @@
     dialog.querySelector(".dialog-close").addEventListener("click", function () { dialog.close(); });
     dialog.addEventListener("click", function (event) {
       if (event.target === dialog) dialog.close();
+    });
+  }
+
+  if (toTopButton) {
+    toTopButton.addEventListener("click", function () {
+      var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (window.location.hash) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
     });
   }
 

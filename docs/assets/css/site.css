@@ -235,6 +235,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .footer-grid p { margin: 0; color: #52677f; font-size: 9px; font-weight: 700; letter-spacing: .03em; }
 .footer-grid p:last-child { justify-self: end; }.footer-grid p a{color:#89a3bd}.footer-grid p a:hover{color:var(--blue)}
 
+.to-top { position: fixed; right: 24px; bottom: 24px; z-index: 80; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(89,195,255,.36); border-radius: 15px; background: rgba(12,25,42,.92); box-shadow: 0 18px 42px rgba(0,0,0,.34); color: var(--blue); font-size: 23px; font-weight: 800; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(12px); cursor: pointer; backdrop-filter: blur(14px); transition: opacity .2s ease, visibility .2s ease, transform .2s ease, background .2s ease, border-color .2s ease; }
+.to-top.is-shown { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+.to-top:hover { border-color: var(--blue); background: #132a42; }
+
 .image-dialog { width: min(94vw, 1500px); max-width: none; padding: 0; overflow: visible; border: 1px solid var(--line-strong); border-radius: 14px; background: #050d17; box-shadow: 0 40px 120px rgba(0,0,0,.75); }
 .image-dialog::backdrop { background: rgba(1,5,10,.88); backdrop-filter: blur(9px); }
 .image-dialog img { width: 100%; max-height: 88vh; object-fit: contain; border-radius: 13px; }
@@ -245,6 +249,33 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .reveal.is-visible { opacity: 1; transform: none; }
 
 a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+
+/* Readability scale */
+body { font-size: 17px; }
+.brand-copy strong { font-size: 15px; }
+.brand-copy small { font-size: 11px; }
+.primary-nav > a { font-size: 14px; }
+.kicker, .overline { font-size: 12px; }
+.hero-proof { font-size: 12px; }
+.metric-rail strong { font-size: 25px; }
+.metric-rail span, .metric-rail > p { font-size: 11px; }
+.section-heading > p { font-size: 16px; }
+.bento > p, .bento-copy > p:not(.overline) { font-size: 15px; }
+.tag-list li { font-size: 10px; }
+.role-stack i { font-size: 11px; }
+.ioc-list span { font-size: 11px; }
+.workflow-track strong { font-size: 13px; }
+.workflow-track small { font-size: 11px; }
+.engineering-copy > p:not(.overline) { font-size: 16px; }
+.engineering-points strong { font-size: 14px; }
+.engineering-points small { font-size: 12px; }
+.text-link { font-size: 14px; }
+.stack-row > span { font-size: 10px; }
+.stack-row li { font-size: 12px; }
+.preview-label { font-size: 12px; }
+.preview-label i, .preview-label b { font-size: 10px; }
+.cta-card p:not(.overline) { font-size: 15px; }
+.footer-grid p { font-size: 11px; }
 
 @media (max-width: 1050px) {
   .hero-layout { grid-template-columns: 1fr; min-height: auto; }
@@ -313,6 +344,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-
   .cta-card { padding: 34px 28px; }
   .cta-card h2 { font-size: 36px; }
   .dialog-close { top: -12px; right: -7px; }
+  .to-top { right: 16px; bottom: 16px; width: 48px; height: 48px; border-radius: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
